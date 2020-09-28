@@ -36,6 +36,17 @@ class Patch():
         return np.mean()
 
 
+class Slide():
+    def __init__():
+        pass
+
+
+
+
+
+
+
+
 
 
 
