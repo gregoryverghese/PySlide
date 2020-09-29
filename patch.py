@@ -11,9 +11,17 @@ import cv2
 import openslide
 
 
+def draw_boundary(annotations, offset=100):
+
+    annotations = list(chain(*[annotations[f] for f in annotations]))
+    coords = list(chain(*annotations))
+    boundaries = list(map(lambda x: (min(x)-offset, max(x)+offset), list(zip(*coords))))
+    #print('boundaries: {}'.format(boundaries))
+    return boundaries
+
 
 class Patch():
-    def __init__():
+    def __init__(self):
         self.x = x
         self.y = y
         self.size = size
@@ -21,30 +29,61 @@ class Patch():
         
 
     def extract(self, slide):
-        return np.array(slide.get_region((self.x, self.y), self.mag_level, self.size))
-        
+        #return np.array(slide.get_region((self.x, self.y), self.mag_level, self.size))
+        pass 
     
     def get_origin(self):
-        return (self.x, self.y)
-
-
-    def get_size(self):
-        return self.size
-
-
-    def patch_intensity(self)
-        return np.mean()
-
-
-class Slide():
-    def __init__():
+        #return (self.x, self.y)
         pass
 
 
+    def get_size(self):
+        #return self.size
+        pass
 
 
+    def patch_intensity(self):
+        #return np.mean()
+        pass
 
 
+class Patching():
+    def __init__(self, slide, mag_level):
+        self.slide = slide
+        self.mag_level = mag_level
+        
+        
+    def extract_patches(self, size, annotations=None, step=0, boundaries=False):
+       
+       patches=[]
+
+       if not boundaries:
+           x, y = slide.dimensions
+           boundaries = [(0, x), (0, y)]
+           print(boundaries)
+
+       elif boundaries:
+           boundaries = draw_boundary(annotations)
+
+       #x1,x2,y1,y2 = boundaries
+       #ToDo: offset x1, y1 user defined int(self.tileDim*0.5*self.magFactor)
+
+       for x in range(boundaries[0][0], boundaries[0][1],step*self.mag_level):
+           for y in range(boundaries[1][0], boundaries[1][1], step*self.mag_level):
+               #Patch(_).extract((x1, y1))
+               patches.append(slide.read_region((x, y), self.mag_level, size))
+               
+       return patches
+
+    
+    def generate_masks(self):
+        pass
+
+
+slide = openslide.OpenSlide('U_100188_10_X_HIGH_10_L1.ndpi')
+p=Patching(slide, 4)
+patches=p.extract_patches((250,250), step=125)
+print(len(patches))
 
 
 
