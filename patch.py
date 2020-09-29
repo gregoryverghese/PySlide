@@ -8,6 +8,7 @@ patch.py
 
 import numpy as np
 import cv2
+import sys
 import openslide
 
 
@@ -53,16 +54,18 @@ class Patching():
         self.mag_level = mag_level
         
         
-    def extract_patches(self, size, annotations=None, step=0, boundaries=False):
+    def extract_patches(self, size, annotations=None, step=0, boundaries=False, only_annotations=False):
        
        patches=[]
-
+       
+       #check whether user has passed boundaries or define using annotation
+       #extremis
        if not boundaries:
            x, y = slide.dimensions
            boundaries = [(0, x), (0, y)]
            print(boundaries)
 
-       elif boundaries:
+       elif boundaries=='draw':
            boundaries = draw_boundary(annotations)
 
        #x1,x2,y1,y2 = boundaries
@@ -71,8 +74,19 @@ class Patching():
        for x in range(boundaries[0][0], boundaries[0][1],step*self.mag_level):
            for y in range(boundaries[1][0], boundaries[1][1], step*self.mag_level):
                #Patch(_).extract((x1, y1))
-               patches.append(slide.read_region((x, y), self.mag_level, size))
-               
+               patches.append(slide.read_region((x, y), self.mag_level, size).convert('RGB'))
+
+       #we might want to focus only on patches containing annotations
+       elif only_annotations:
+           for x in range(boundaries[0][0], boundaries[0][1],step*self.mag_level):
+               for y in range(boundaries[1][0], boundaries[1][1], step*self.mag_level):
+                   for a in list(annotations.values())
+                       p = Path(a)
+                       contains = p.contains_point([w, h])
+                       if contains==True:
+                           patches.append(slide.read_region((x, y)), self.mag_level,size).convert('RGB')
+                           break
+
        return patches
 
     
@@ -83,8 +97,9 @@ class Patching():
 slide = openslide.OpenSlide('U_100188_10_X_HIGH_10_L1.ndpi')
 p=Patching(slide, 4)
 patches=p.extract_patches((250,250), step=125)
-print(len(patches))
-
+print(len(patches), sys.getsizeof(patches))
+print(patches[0])
+cv2.imwrite('test.png', np.array(patches[10000]))
 
 
 
