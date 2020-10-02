@@ -22,17 +22,18 @@ def draw_boundary(annotations, offset=100):
 
 
 class Patching():
-    def __init__(self, slide, annotations, size=(256, 256), mag_level=0, boundaries=None, sparse_annotations=False):
+    def __init__(self, slide, size=(256, 256), mag_level=0, boundaries=None, sparse_annotations=False):
 
         self.slide = slide
         self.mag_level = mag_level
         self.boundaries = boundaries
-        self.annotations = annotations
         self.size = size
         self.sparse_annotations = sparse_annotations
-        
 
-    def extract_patches(self):
+        self.number = None
+
+
+    def extract_patches(self, annotations):
                 
         #mask = slide.generate_mask()
         dim = self.slide.dimensions
@@ -40,10 +41,10 @@ class Patching():
         masks = []
         patches = []
 
-        for k in self.annotations:
-            v = self.annotations[k]
+        for k in annotations:
+            v = annotations[k]
             v = [np.array(a) for a in v]
-            cv2.fillpoly(img, v, color=k)
+            cv2.fillPoly(img, v, color=k)
  
         if not boundaries:
            x, y = slide.dimensions
@@ -51,7 +52,7 @@ class Patching():
            print(boundaries)
 
         elif self.boundaries=='draw':
-            border = draw_boundary(self.annotations)
+            border = draw_boundary(annotations)
             x_min,x_max,y_min,y_max = list(itertools.chain(*border))
 
         for x in range(border[0][0], border[0][1],step*self.mag_level):
@@ -66,7 +67,7 @@ class Patching():
          
         return masks, patches
 
-
+    '''
     def extract_patches(self):
 
         if not boundaries:
@@ -85,7 +86,7 @@ class Patching():
             patches = [patches[i] for i in index]
 
         return patches
-
+    '''
 
 
     def sample_patches(self):
