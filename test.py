@@ -2,6 +2,9 @@
 from utilities import getRegions 
 import openslide
 from patch import Patching
+import sys
+import cv2
+import numpy as np
 
 classKey = {'SINUS':1}
 
