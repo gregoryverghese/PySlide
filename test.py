@@ -15,9 +15,9 @@ for k in list(keys):
 annotations = {classKey[k]: [v2['coords'] for k2, v2 in v.items()] for k,v in annotations.items()}
 
 slide = openslide.OpenSlide('U_100188_10_X_HIGH_10_L1.ndpi')
-p=Patching(slide, annotations, boundaries='draw')
+p=Patching(slide, boundaries='draw')
 
-patches=p.extract_patches()
+patches=p.extract_patches(annotations)
 
 
 print(len(patches), sys.getsizeof(patches))
