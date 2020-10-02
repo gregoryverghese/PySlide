@@ -67,6 +67,27 @@ class Patching():
         return masks, patches
 
 
+    def extract_patches(self):
+
+        if not boundaries:
+            x, y = slide.dimensions
+            boundaries = [(0, x), (0, y)]
+        elif self.boundaries=='draw':
+            border = draw_boundary(self.annotations)
+            x_min,x_max,y_min,y_max = list(itertools.chain(*border))
+
+        for x in range(border[0][0], border[0][1],step*self.mag_level):
+            for y in range(border[1][0], border[1][1], step*self.mag_level):
+                patches.append(slide.read_region((x, y), self.mag_level, size).convert('RGB'))
+
+        if not sparse_annotations:
+            index  = [i for i in range(len(masks)) if np.unique(masks[i]) > 1]
+            patches = [patches[i] for i in index]
+
+        return patches
+
+
+
     def sample_patches(self):
         pass
         
