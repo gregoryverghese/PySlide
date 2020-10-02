@@ -21,85 +21,68 @@ def draw_boundary(annotations, offset=100):
     return boundaries
 
 
-class Patch():
-    def __init__(self):
-        self.x = x
-        self.y = y
-        self.size = size
-        self.mag_level = mag_level
-        
-
-    def extract(self, slide):
-        #return np.array(slide.get_region((self.x, self.y), self.mag_level, self.size))
-        pass 
-    
-    def get_origin(self):
-        #return (self.x, self.y)
-        pass
-
-
-    def get_size(self):
-        #return self.size
-        pass
-
-
-    def patch_intensity(self):
-        #return np.mean()
-        pass
-
-
 class Patching():
-    def __init__(self, slide, mag_level):
+    def __init__(self, slide, annotations, size=(256, 256), mag_level=0, boundaries=None, sparse_annotations=False):
+
         self.slide = slide
         self.mag_level = mag_level
+        self.boundaries = boundaries
+        self.annotations = annotations
+        self.size = size
+        self.sparse_annotations = sparse_annotations
         
-        
-    def extract_patches(self, size, annotations=None, step=0, boundaries=False, only_annotations=False):
-       
-       patches=[]
-       
-       #check whether user has passed boundaries or define using annotation
-       #extremis
-       if not boundaries:
+
+    def extract_patches(self):
+                
+        #mask = slide.generate_mask()
+        dim = self.slide.dimensions
+        img = np.zeros((dim[1], dim[0]), dtype=np.uint8)
+        masks = []
+        patches = []
+
+        for k in self.annotations:
+            v = self.annotations[k]
+            v = [np.array(a) for a in v]
+            cv2.fillpoly(img, v, color=k)
+ 
+        if not boundaries:
            x, y = slide.dimensions
            boundaries = [(0, x), (0, y)]
            print(boundaries)
 
-       elif boundaries=='draw':
-           boundaries = draw_boundary(annotations)
+        elif self.boundaries=='draw':
+            border = draw_boundary(self.annotations)
+            x_min,x_max,y_min,y_max = list(itertools.chain(*border))
 
-       #x1,x2,y1,y2 = boundaries
-       #ToDo: offset x1, y1 user defined int(self.tileDim*0.5*self.magFactor)
+        for x in range(border[0][0], border[0][1],step*self.mag_level):
+            for y in range(border[1][0], border[1][1], step*self.mag_level):
+                masks.append(img[h:h+self.size, w:w+self.size])
+                patches.append(slide.read_region((x, y), self.mag_level, size).convert('RGB'))
 
-       for x in range(boundaries[0][0], boundaries[0][1],step*self.mag_level):
-           for y in range(boundaries[1][0], boundaries[1][1], step*self.mag_level):
-               #Patch(_).extract((x1, y1))
-               patches.append(slide.read_region((x, y), self.mag_level, size).convert('RGB'))
+        if not sparse_annotations:
+            index  = [i for i in range(len(masks)) if np.unique(masks[i]) > 1]
+            patches = [patches[i] for i in index]
+            masks = [masks[i] for i in index]
+         
+        return masks, patches
 
-       #we might want to focus only on patches containing annotations
-       elif only_annotations:
-           for x in range(boundaries[0][0], boundaries[0][1],step*self.mag_level):
-               for y in range(boundaries[1][0], boundaries[1][1], step*self.mag_level):
-                   for a in list(annotations.values())
-                       p = Path(a)
-                       contains = p.contains_point([w, h])
-                       if contains==True:
-                           patches.append(slide.read_region((x, y)), self.mag_level,size).convert('RGB')
-                           break
 
-       return patches
+    def sample_patches(self):
+        pass
+        
 
-    
-    def generate_masks(self):
+    def compute_class_weights(self):
+        pass    
+        #getclasslabels
+        #calculate frequencies
+        
+
+    def compute_pixel_weights(self):
+        #getnumberofpixels according to script
         pass
 
 
-slide = openslide.OpenSlide('U_100188_10_X_HIGH_10_L1.ndpi')
-p=Patching(slide, 4)
-patches=p.extract_patches((250,250), step=125)
-print(len(patches), sys.getsizeof(patches))
-print(patches[0])
-cv2.imwrite('test.png', np.array(patches[10000]))
+
 
 
 
