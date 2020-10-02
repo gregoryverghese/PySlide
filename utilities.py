@@ -7,6 +7,7 @@ utilities.py
 
 import numpy as np
 import xml.etree.ElementTree as ET
+from itertools import chain
 
 def draw_boundary(annotations, offset=100):
 
