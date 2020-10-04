@@ -18,12 +18,14 @@ for k in list(keys):
 annotations = {classKey[k]: [v2['coords'] for k2, v2 in v.items()] for k,v in annotations.items()}
 
 slide = openslide.OpenSlide('U_100188_10_X_HIGH_10_L1.ndpi')
-p=Patching(slide, boundaries='draw')
+p=Patching(slide, annotations, boundaries='draw')
+p()
+patches = p.patches
+masks = p.masks
 
-patches=p.extract_patches(annotations)
 
 
-print(len(patches), sys.getsizeof(patches))
-print(patches[0])
-cv2.imwrite('test.png', np.array(patches[10000]))
+
+print(len(patches), len(masks))
+#print(patches)
 
