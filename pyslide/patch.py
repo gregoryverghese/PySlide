@@ -15,9 +15,10 @@ import itertools
 
 
 class Patching():
-    def __init__(self, slide, size=(256, 256), mag_level=4, boundaries=None,sparse_annotations=True):
+    def __init__(self, slide, annotations, size=(256, 256), mag_level=4, boundaries=None, sparse_annotations=False):
 
         self.slide = slide
+        self.annotations = annotations
         self.mag_level = mag_level
         self.boundaries = boundaries
         self.step = 64
@@ -25,64 +26,47 @@ class Patching():
         self.sparse_annotations = sparse_annotations
         self.mag_factor = 16 
         self.number = None
+        self.patches = []
+        self.masks = []
 
 
-    def extract_patches(self, annotations):
-                
-        #mask = slide.generate_mask()
+    def __call__(self):
+        
+        print('what the hell are we doing')
         dim = self.slide.dimensions
-        img = np.zeros((dim[1], dim[0]), dtype=np.uint8)
-        masks = []
-        patches = []
+        
+        slide_mask = np.zeros((dim[1], dim[0]), dtype=np.uint8)
 
-        for k in annotations:
-            v = annotations[k]
+        for k in self.annotations:
+            v = self.annotations[k]
             v = [np.array(a) for a in v]
-            cv2.fillPoly(img, v, color=k)
- 
+            cv2.fillPoly(slide_mask, v, color=k)
+
         if not self.boundaries:
            x, y = self.slide.dimensions
            self.boundaries = [(0, x), (0, y)]
 
         elif self.boundaries=='draw':
-            border = draw_boundary(annotations)
-            x_min,x_max,y_min,y_max = list(itertools.chain(*border))
-
-        for x in range(border[0][0], border[0][1],self.step*self.mag_factor):
-            for y in range(border[1][0], border[1][1], self.step*self.mag_factor):
-                masks.append(img[x:x+self.size[0], y:y+self.size[1]])
-                patches.append(self.slide.read_region((x, y), self.mag_level, self.size).convert('RGB'))
-        
-        print('original number of patches', len(patches))
-        if not self.sparse_annotations:
-            index  = [i for i in range(len(masks)) if len(np.unique(masks[i])) > 1]
-            patches = [patches[i] for i in index]
-            masks = [masks[i] for i in index]
-
-        print(print('number of patches', len(patches)))
-         
-        return masks, patches
-
-    '''
-    def extract_patches(self):
-
-        if not boundaries:
-            x, y = slide.dimensions
-            boundaries = [(0, x), (0, y)]
-        elif self.boundaries=='draw':
             border = draw_boundary(self.annotations)
             x_min,x_max,y_min,y_max = list(itertools.chain(*border))
 
-        for x in range(border[0][0], border[0][1],step*self.mag_level):
-            for y in range(border[1][0], border[1][1], step*self.mag_level):
-                patches.append(slide.read_region((x, y), self.mag_level, size).convert('RGB'))
+        for x in range(border[0][0], border[0][1], self.step*self.mag_factor):
+            for y in range(border[1][0], border[1][1], self.step*self.mag_factor):
+                self.patches.append({'x':x,'y':y})
+                self.masks.append(slide_mask[x:x+self.size[0], y:y+self.size[1]])
 
-        if not sparse_annotations:
-            index  = [i for i in range(len(masks)) if np.unique(masks[i]) > 1]
-            patches = [patches[i] for i in index]
+        print('original number of patches', len(self.patches))
+        if not self.sparse_annotations:
+            index  = [i for i in range(len(self.masks)) if len(np.unique(self.masks[i])) > 1]
+            patches = [self.patches[i] for i in index]
+        
 
-        return patches
-    '''
+    def extract_patches(self):
+            
+        for p in self.patches:
+            patch = p.read_region((p['x'],p['y'], self.mag_level, (self.size[0],self.size[1]))
+            yield patch
+
 
 
     def sample_patches(self):
