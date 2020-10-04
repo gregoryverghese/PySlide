@@ -66,7 +66,7 @@ class Patching():
          
         return masks, patches
 
-
+'''
     def extract_patches(self):
 
         if not boundaries:
@@ -85,7 +85,7 @@ class Patching():
             patches = [patches[i] for i in index]
 
         return patches
-
+'''
 
 
     def sample_patches(self):
