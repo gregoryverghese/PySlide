@@ -15,7 +15,8 @@ import itertools
 
 
 class Patching():
-    def __init__(self, slide, annotations, size=(256, 256), mag_level=4, boundaries=None, sparse_annotations=False):
+    def __init__(self, slide, annotations, size=(256, 256), mag_level=4,
+            boundaries=None, mode=False):
 
         self.slide = slide
         self.annotations = annotations
@@ -23,18 +24,19 @@ class Patching():
         self.boundaries = boundaries
         self.step = 64
         self.size = size
-        self.sparse_annotations = sparse_annotations
+        self.mode = mode
         self.mag_factor = 16 
         self._number = None
         self._patches = []
         self._masks = []
         self._slide_mask = None
+        self._class_no = []
 
 
     def __call__(self):
         
         dim = self.slide.dimensions
-        class_no = []
+        #class_no = []
 
         slide_mask = np.zeros((dim[1], dim[0]), dtype=np.uint8)
 
@@ -59,17 +61,22 @@ class Patching():
             for y in range(border[1][0], border[1][1], step):
 
                 self.patches.append({'x':x,'y':y})
-                mask = slide_mask[x:x+self.size[0],y:y+self.size[1]]
+                mask = slide_mask[y:y+self.size[0],x:x+self.size[1]]
                 classes = dict(zip(*np.unique(mask,return_counts=True)))
+
+                self._class_no.append(len(classes))
                 self.masks.append({'x':x, 'y':y, 'classes':classes})
 
 
         print('original number of patches', len(self.patches))
-        if not self.sparse_annotations:
-            index  = [i for i in range(len(class_no)) if class_no[i] > 1]
-            patches = [self.patches[i] for i in index]
-
-
+        if self.mode=='focus':
+            print(self._class_no)
+            index  = [i for i in range(len(self._class_no)) if self._class_no[i] > 1]
+            self._patches = [self.patches[i] for i in index]
+        print(self._patches)
+        
+        print('New number of patches', len(self.patches))
+        print('done')
 
     @property
     def masks(self):
@@ -78,6 +85,7 @@ class Patching():
 
     @masks.setter
     def masks(self):
+        #need type checking
         pass        
 
 
@@ -88,35 +96,57 @@ class Patching():
 
     @patches.setter
     def patches(self):
+        #need type checking
         pass
 
-
+    #Some how we need to help user decide size of the mask they want etc
     @property
-    def slide_mask(self, size):
+    def slide_mask(self):
+
         mask = self._slide_mask
-        mask = cv2.resize(mask, size)
+        #print(np.unique(mask))
+        #mask = cv2.resize(mask, size)
         return mask
         
         
-    def extract_patches(self):
+    #def _extract_patch(self):
             
-        for p in self.patches:
-            patch = p.read_region((p['x'],p['y'], self.mag_level, (self.size[0],self.size[1])))
-            yield patch
+        #for p in self.patches:
+            #yield p
+            
 
+    #def extract_patch(self):
+        #p = next(self._extract_patch())
+        #self.patches[i]
+        #return self.slide.read_region((p['x'],p['y']), self.mag_level,(self.size[0],self.size[1]))
+
+    
+    #def _extract_mask(self):
+
+        #for p in self.patches:
+            #yield p
+        
+    
+    #def extract_mask(self):
+        
+        #p = next(self._extract_mask())
+        #return self._slide_mask[p['y']:p['y']+self.size[0], p['x']:p['x']+self.size[1]]*255
+            
+
+    def extract_patches(self):
+
+        patches = [self.slide.read_region((p['x'],p['y']), 
+                            self.mag_level,(self.size[0],self.size[1])) for p in self._patches]
+        return patches
 
     def extract_masks(self):
-        
-        for p in self.patches:
-            x = p['x']
-            y = p['y']
-            mask = self._slide_mask[x:x+self.size[0], y:y+self.size[1]]
-            yield mask
 
+        masks = [self._slide_mask[p['y']:p['y']+self.size[0], 
+                            p['x']:p['x']+self.size[1]]*255 for p in self._patches]
+        return masks
 
     def sample_patches(self):
         pass
-        
         
 
     def compute_class_weights(self):
