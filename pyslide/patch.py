@@ -15,89 +15,163 @@ import itertools
 
 
 class Patching():
-    def __init__(self, slide, size=(256, 256), mag_level=4, boundaries=None,sparse_annotations=True):
+    def __init__(self, slide, annotations, size=(256, 256), mag_level=4,
+            boundaries=None, mode=False):
 
         self.slide = slide
+        self.annotations = annotations
         self.mag_level = mag_level
         self.boundaries = boundaries
         self.step = 64
         self.size = size
-        self.sparse_annotations = sparse_annotations
+        self.mode = mode
         self.mag_factor = 16 
-        self.number = None
+        self._number = None
+        self._patches = []
+        self._masks = []
+        self._slide_mask = None
+        self._class_no = []
 
 
-    def extract_patches(self, annotations):
-                
-        #mask = slide.generate_mask()
+    def __call__(self):
+        
         dim = self.slide.dimensions
-        img = np.zeros((dim[1], dim[0]), dtype=np.uint8)
-        masks = []
-        patches = []
+        #class_no = []
 
-        for k in annotations:
-            v = annotations[k]
+        slide_mask = np.zeros((dim[1], dim[0]), dtype=np.uint8)
+
+        for k in self.annotations:
+            v = self.annotations[k]
             v = [np.array(a) for a in v]
-            cv2.fillPoly(img, v, color=k)
- 
+            cv2.fillPoly(slide_mask, v, color=k)
+        
+        self._slide_mask = slide_mask
+
         if not self.boundaries:
            x, y = self.slide.dimensions
            self.boundaries = [(0, x), (0, y)]
 
         elif self.boundaries=='draw':
-            border = draw_boundary(annotations)
-            x_min,x_max,y_min,y_max = list(itertools.chain(*border))
-
-        for x in range(border[0][0], border[0][1],self.step*self.mag_factor):
-            for y in range(border[1][0], border[1][1], self.step*self.mag_factor):
-                masks.append(img[x:x+self.size[0], y:y+self.size[1]])
-                patches.append(self.slide.read_region((x, y), self.mag_level, self.size).convert('RGB'))
-        
-        print('original number of patches', len(patches))
-        if not self.sparse_annotations:
-            index  = [i for i in range(len(masks)) if len(np.unique(masks[i])) > 1]
-            patches = [patches[i] for i in index]
-            masks = [masks[i] for i in index]
-
-        print(print('number of patches', len(patches)))
-         
-        return masks, patches
-
-    '''
-    def extract_patches(self):
-
-        if not boundaries:
-            x, y = slide.dimensions
-            boundaries = [(0, x), (0, y)]
-        elif self.boundaries=='draw':
             border = draw_boundary(self.annotations)
             x_min,x_max,y_min,y_max = list(itertools.chain(*border))
+        
+        step = self.step*self.mag_factor
 
-        for x in range(border[0][0], border[0][1],step*self.mag_level):
-            for y in range(border[1][0], border[1][1], step*self.mag_level):
-                patches.append(slide.read_region((x, y), self.mag_level, size).convert('RGB'))
+        for x in range(border[0][0], border[0][1], step):
+            for y in range(border[1][0], border[1][1], step):
 
-        if not sparse_annotations:
-            index  = [i for i in range(len(masks)) if np.unique(masks[i]) > 1]
-            patches = [patches[i] for i in index]
+                self.patches.append({'x':x,'y':y})
+                mask = slide_mask[y:y+self.size[0],x:x+self.size[1]]
+                classes = dict(zip(*np.unique(mask,return_counts=True)))
 
+                self._class_no.append(len(classes))
+                self.masks.append({'x':x, 'y':y, 'classes':classes})
+
+
+        print('original number of patches', len(self.patches))
+        if self.mode=='focus':
+            print(self._class_no)
+            index  = [i for i in range(len(self._class_no)) if self._class_no[i] > 1]
+            self._patches = [self.patches[i] for i in index]
+        print(self._patches)
+        
+        print('New number of patches', len(self.patches))
+        print('done')
+
+    @property
+    def masks(self):
+        return self._masks
+
+
+    @masks.setter
+    def masks(self):
+        #need type checking
+        pass        
+
+
+    @property
+    def patches(self):
+        return self._patches
+
+
+    @patches.setter
+    def patches(self):
+        #need type checking
+        pass
+
+    #Some how we need to help user decide size of the mask they want etc
+    @property
+    def slide_mask(self):
+
+        mask = self._slide_mask
+        #print(np.unique(mask))
+        #mask = cv2.resize(mask, size)
+        return mask
+        
+        
+    #def _extract_patch(self):
+            
+        #for p in self.patches:
+            #yield p
+            
+
+    #def extract_patch(self):
+        #p = next(self._extract_patch())
+        #self.patches[i]
+        #return self.slide.read_region((p['x'],p['y']), self.mag_level,(self.size[0],self.size[1]))
+
+    
+    #def _extract_mask(self):
+
+        #for p in self.patches:
+            #yield p
+        
+    
+    #def extract_mask(self):
+        
+        #p = next(self._extract_mask())
+        #return self._slide_mask[p['y']:p['y']+self.size[0], p['x']:p['x']+self.size[1]]*255
+            
+
+    def extract_patches(self):
+
+        patches = [self.slide.read_region((p['x'],p['y']), 
+                            self.mag_level,(self.size[0],self.size[1])) for p in self._patches]
         return patches
-    '''
 
+    def extract_masks(self):
+
+        masks = [self._slide_mask[p['y']:p['y']+self.size[0], 
+                            p['x']:p['x']+self.size[1]]*255 for p in self._patches]
+        return masks
 
     def sample_patches(self):
         pass
         
 
     def compute_class_weights(self):
-        pass    
-        #getclasslabels
-        #calculate frequencies
-        
-
-    def compute_pixel_weights(self):
-        #getnumberofpixels according to script
+        #labels = self.patches.labels
         pass
+        
+        
+    def compute_pixel_weights(self):
+
+        for m in self.masks:
+            labels = m.reshape(-1)
+            classes = np.unique(labels)
+            weightDict = {c:0 for c in range(numClasses)}
+            classWeights = class_weight.compute_class_weight('balanced', classes, labels)
+
+            weightKey = list(zip(classes, classWeights))
+            for k, v in weightKey:
+                weightDict[k]=v
+
+            values=list(weightDict.values())
+            weights.append(list(values))
+
+        finalWeights = list(zip(*weights))
+        averageWeights = [np.mean(np.array(w)) for w in finalWeights]
+
 
 
 
