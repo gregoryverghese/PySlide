@@ -31,7 +31,7 @@ class Patching():
         self._masks = []
         self._slide_mask = None
         self._class_no = []
-
+        
 
     def __call__(self):
         
@@ -114,7 +114,7 @@ class Patching():
         #for p in self.patches:
             #yield p
             
-
+    
     #def extract_patch(self):
         #p = next(self._extract_patch())
         #self.patches[i]
