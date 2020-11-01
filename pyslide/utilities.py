@@ -2,7 +2,13 @@
 # -*- coding: utf-8 -*-
 
 '''
-utilities.py
+def resizeImage(dim, factor=2048, threshold=0, op=operator.gt):
+    boundaries = [factor*i for i in range(100000)]
+    boundaries = [f for f in boundaries if op(f,threshold)]
+    diff = list(map(lambda x: abs(dim-x), boundaries))
+    newDim = boundaries[diff.index(min(diff))]
+
+    return newDimutilities.py
 '''
 
 import numpy as np
