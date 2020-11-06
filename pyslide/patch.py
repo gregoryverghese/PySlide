@@ -108,6 +108,7 @@ class Slide(OpenSlide):
         pass
 
 
+######################################################################3
 
 class Patching(Slide):
 
@@ -177,14 +178,46 @@ class Patching(Slide):
             self.masks.append({'x':x, 'y':y, 'classes':classes})
 
         if self.mode=='focus':
-            index  = [i for i in range(len(self._class_no)) 
-                      if self._class_no[i] > 1]
+            self.contains()
 
-            self._patches = [self.patches[i] for i in index]
-
-        return self._patches 
+        return len(self._patches)
 
 
+    def focus(self):
+
+        index  = [i for i in range(len(self._class_no)) 
+                  if self._class_no[i] > 1]
+
+        self._patches = [self.patches[i] for i in index]
+
+        return len(self._patches)
+
+    
+    #TODO:check my filter method
+    @staticmethod 
+    def contains(verts):
+
+        xx,yy=np.meshgrid(np.arange(300),np.arange(300))
+        xx,yy=xx.flatten(),yy.flatten()
+        verts=np.stack([x,y]).T
+        p=Path(verts)
+        mask=p.contains_points(verts)
+        num=(tolerance*grid.shape[0])
+        x = len(grid[grid==True])
+        return verts
+
+
+    #Do we want to use filtering based on orign point
+    #or do we want to filter based on all points within patch
+    def within(self, boundaries=self._boundaries):
+
+        path = Path(self.boundaries)
+        f = lambda x: p.contains([x['x'],x['y']])
+        self_.patches=list(filter(f, self._patches))
+     
+        return self_patches
+        
+                
     def extract_patch(self, x=None, y=None):
         patch=self.slide.read_region(x,y,self.mag_level,(self.size[0],self.size[1])
         return p
@@ -206,6 +239,13 @@ class Patching(Slide):
             mask=self.extract_mask(p['x'].p['y']
             yield mask
         
+
+
+
+
+
+####################################################################
+
 
 class Stitching():
     def __init__(self, _patches):
