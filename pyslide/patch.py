@@ -9,38 +9,43 @@ patch.py
 import numpy as np
 import cv2
 import sys
-import openslide
-from utilities import draw_boundary
-import itertoolsi
+from openslide import OpenSlide
+from itertools import chain
 import operator as op
 
 
 class Slide(OpenSlide):
-    def __init__(self, annotations):
-        super().__init__()
+    def __init__(self, filename, annotations, border):
+        super().__init__(filename)
         self.annotations=annotations
         self._slide_mask=None
-       
+        self.dims = self.dimensions
 
+        if border=='draw':
+            self._border=self.draw_border()
+        elif border=='fullsize':
+            self._border=[[0,self.dims[0]],[0,self.dims[1]]]
+       
     @property
     def border(self):
         return self._border
 
 
-    @setter.border
+    @border.setter 
     def border(self, value):
-
+        
         if value=='draw':
-            self.border = draw_boundary(self.annotations)
+            self._border = self.draw_border()
         elif value=='fullsize':
-            self.border = [[0,self.dims[0]],[0,self.dims[0][1]]
+            self._border = [[0,self.dims[0]],[0,self.dims[1]]]
         else:
-            self.border = value
+            pass
+            #TODO need to raise an exception
           
 
     def slide_mask(self, size=None):
         
-        x, y = self.dims[0], self.dims[1])
+        x, y = self.dims[0], self.dims[1]
         slide_mask=np.zeros((x, y), dtype=np.uint8)
 
         for k in self.annotations:
@@ -48,8 +53,8 @@ class Slide(OpenSlide):
             v = [np.array(a) for a in v]
             cv2.fillPoly(slide_mask, v, color=k)
 
-        if size not None:
-            cv2.resize(slide_mask, size)
+        if size is not None:
+            slide_mask=cv2.resize(slide_mask, size)
         
         self._slide_mask=slide_mask
 
@@ -57,26 +62,29 @@ class Slide(OpenSlide):
 
 
     @staticmethod   
-    def resize_border(self, dim, factor, threshold, operator):
+    def resize_border(dim, factor, threshold, operator):
 
         operator_dict={'>':op.gt,'=>':op.ge,'<':op.lt,'=<':op.le}
-        
+        operator=operator_dict[operator] 
         multiples = [factor*i for i in range(100000)]
-        multiples = [m for m in multiples if op(m,threshold)]
+        multiples = [m for m in multiples if operator(m,threshold)]
         diff = list(map(lambda x: abs(dim-x), multiples))
         new_dim = multiples[diff.index(min(diff))]
+       
+        return new_dim
 
-    return new_dim
 
+    #TODO: function will change with format of annotations
+    #data structure accepeted
+    def draw_border(self, space=100):
 
-    def draw_border(self, space=100)
-        
-        coordinates=list(chain(*self.annotations))
-        coordiantes=list(chain(*annotations))
+        coordinates = list(chain(*[self.annotations[a] for a in 
+                                   self.annotations]))
+        coordinates=list(chain(*coordinates))
         f=lambda x: (min(x)-space, max(x)+space)
-        self.border=list(map(f, list(zip*coordinates)))
+        self._border=list(map(f, list(zip(*coordinates))))
 
-        return self.border
+        return self._border
 
 
     def generate_region(self, x=None, y=None,  x_size=None, y_size=None,
@@ -96,15 +104,15 @@ class Slide(OpenSlide):
         return region
 
 
-    def calculate_mean(self)
+    def calculate_mean(self):
         pass 
 
 
-    def calculate_std(self)
+    def calculate_std(self):
         pass
 
 
-    def calcuate_weights()
+    def calcuate_weights():
         pass
 
 
@@ -117,9 +125,9 @@ class Patching(Slide):
     def __init__(self, slide, annotations, size=(256, 256), mag_level=0,
             border=None, mode=False):
         
-        super()__init__()
+        super().__init__()
+        self.slide=slide 
         self.mag_level = mag_level
-        self.border = border 
         self.size = size
         self.mode = mode 
         self._number = None
@@ -151,13 +159,13 @@ class Patching(Slide):
         return self._step
 
 
-    @step.setter():
+    @step.setter
     def step(self, value):
-        step=step*mag_factors[self.mag_level]
+        step=step*MAG_FACTORS[self.mag_level]
         self._step=step
 
     
-   def patching(self):
+    def patching(self):
 
         xmin, xmax = border[0][0], border[0][1]
         ymin, ymax = border[1][0], border[1][1]
@@ -209,9 +217,12 @@ class Patching(Slide):
 
     #Do we want to use filtering based on orign point
     #or do we want to filter based on all points within patch
-    def within(self, boundaries=self._boundaries):
+    def within(self, boundaries=None):
 
-        path = Path(self.boundaries)
+        if boundaries is None:
+            boundaries=self.slide.border
+
+        path = Path(boundaries)
         f = lambda x: p.contains([x['x'],x['y']])
         self_.patches=list(filter(f, self._patches))
      
@@ -219,8 +230,8 @@ class Patching(Slide):
         
                 
     def extract_patch(self, x=None, y=None):
-        patch=self.slide.read_region(x,y,self.mag_level,(self.size[0],self.size[1])
-        return p
+        patch=self.slide.read_region(x,y,self.mag_level,(self.size[0],self.size[1]))
+        return patch
 
 
     def extract_patches(self):
@@ -236,17 +247,14 @@ class Patching(Slide):
         
     def extract_masks(self):
         for p in self._patches:
-            mask=self.extract_mask(p['x'].p['y']
+            mask=self.extract_mask(p['x'],p['y'])
             yield mask
         
 
 
-
-
-
 ####################################################################
 
-
+'''
 class Stitching():
     def __init__(self, _patches):
         super().__init__()
@@ -262,13 +270,13 @@ class Stitching():
     def stitch():
         
         temp=np.zeros((int(h), int(w, 3))
-        for p in extract_patches():
+        for p in self.extract_patches()
             self.image[ynew:ynew+ysize,xnew:xnew+xsize,0]=p[:,:,0]
             self.image[ynew:ynew+ysize,xnew:xnew+xsize,1]=p[:,:,1]
             self.image[ynew:ynew+ysize,xnew:xnew+xsize,1]=p[:,:,1]
         
         return image
-
+'''
 
             
 
