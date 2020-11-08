@@ -65,9 +65,12 @@ class Slide(OpenSlide):
 
 
     @staticmethod   
-    def resize_border(dim, factor, threshold, operator):
+    def resize_border(dim, factor=1, threshold=None, operator='=>'):
+        
+        if threshold is None:
+            threshold=dim
 
-        operator_dict={'>':op.gt,'=>':op.ge,'<':op.lt,'=<':op.le}
+        operator_dict={'>':op.gt,'=>':op.ge,'<':op.lt,'=<':op.lt}
         operator=operator_dict[operator] 
         multiples = [factor*i for i in range(100000)]
         multiples = [m for m in multiples if operator(m,threshold)]
@@ -91,35 +94,30 @@ class Slide(OpenSlide):
 
 
     def generate_region(self, mag=0, x=None, y=None,  x_size=None, y_size=None,
-                        scale_border=False):
+                        scale_border=False, factor=1, threshold=None,
+                        operator='=>'):
 
         if x is None:
             self.draw_border()
             x, y = self.border
         
-        print('x:{}'.format(x))
-        print('y:{}'.format(y))
-
         x_min, x_max=x
         y_min, y_max=y
 
         x_size=x_max-x_min
         y_size=y_max-y_min
 
-        print('x_size:{}'.format(x_size))
-        print('y_size:{}'.format(y_size))
-
-        #TODO: scale both dimensions or just a x_max, y_max
-        if scale_border:
-            x = resize_border(x, factor, threshold, operator)
-            y = resize_border(y, factor, threshold, operator)
-        
         #Adjust sizes - treating 0 as base
         #256 size in mag 0 is 512 in mag 1
         x_size=int(x_size/Slide.MAG_fACTORS[mag])
         y_size=int(y_size/Slide.MAG_fACTORS[mag])
         
+        if scale_border:
+            x_size = Slide.resize_border(x_size, factor, threshold, operator)
+            y_size = Slide.resize_border(y_size, factor, threshold, operator)
+        
         print('x_size:{}'.format(x_size))
+        print('y_size:{}'.format(y_size))
 
         region=self.read_region((x_min,y_min),mag,(x_size, y_size))
         mask=self.slide_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
@@ -127,16 +125,90 @@ class Slide(OpenSlide):
         return region, mask 
 
 
+
+class Preprocessing():
+    def __init__(self):
+        self.masks = mask
+        self.patches = patch
+        self._weights = None
+
+    @property
+    def (self):
+        return self_weights
+
+
+    
+    def image_std(image):
+
+        channel_values = np.sum(image, axis=(0,1), dtype='float64')
+        shape = image.shape
+
+        channel_values_sq= no.sum(np.square(image-mean), axis=(0,1),
+                                  dtype='float64')
+
+        std = np.sqrt(channel_values_sq/pixel_num, dtype='float64')
+
+        return std
+
+        
+    
+    @staticmethod
+    def image_mean(image):
+
+        channel_values = np.sum(image, axis=(0,1), dtype='float64')
+        shape = image.shape
+
+        pixel_num = image_shape[0]*image_shape[1]
+        mean=channel_values/pixel_num
+
+        return mean, channel_values, pixel_num
+
+
     def calculate_mean(self):
-        pass 
+        if channel:
+            pass
+
+        for p in self._patches:
+            p=p.astype('float64')
+            mean=image_mean
+
+        return None
 
 
     def calculate_std(self):
-        pass
+
+        if channel:
+            pass 
+
+        for p in self._patches:
+            p=p.astype('float64')
+            std = image_std
+
+        return None
 
 
-    def calcuate_weights():
-        pass
+
+    #TODO calculate inverse frequency of pixels and compare
+    def calculate_weights(self, no_classes):
+    
+        total = {c:0 for c in range(num_classes)}
+
+        for m in self.masks:
+            labels = m.reshape(-1)
+            classes = np.unique(labels, return_counts=True)
+
+            pixel_dict = dict(list(zip(*classes))) 
+    
+            for k, v in pixel_dict.items():
+                total[k] = total[k] + v 
+        
+        if num_classes==2:
+            self._weights = total[0]/total[1]
+        else:
+            self._weights = [1/v for v in list(total.values())]
+
+        return self_weights
+
 
 
 ######################################################################3
