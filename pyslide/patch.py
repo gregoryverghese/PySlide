@@ -15,6 +15,9 @@ import operator as op
 
 
 class Slide(OpenSlide):
+
+    MAG_fACTORS={0:1,1:2,3:4,4:16,5:32}
+
     def __init__(self, filename, annotations, border):
         super().__init__(filename)
         self.annotations=annotations
@@ -87,21 +90,41 @@ class Slide(OpenSlide):
         return self._border
 
 
-    def generate_region(self, x=None, y=None,  x_size=None, y_size=None,
-                        scale_border=None):
+    def generate_region(self, mag=0, x=None, y=None,  x_size=None, y_size=None,
+                        scale_border=False):
 
         if x is None:
             self.draw_border()
             x, y = self.border
         
+        print('x:{}'.format(x))
+        print('y:{}'.format(y))
+
+        x_min, x_max=x
+        y_min, y_max=y
+
+        x_size=x_max-x_min
+        y_size=y_max-y_min
+
+        print('x_size:{}'.format(x_size))
+        print('y_size:{}'.format(y_size))
+
+        #TODO: scale both dimensions or just a x_max, y_max
         if scale_border:
             x = resize_border(x, factor, threshold, operator)
             y = resize_border(y, factor, threshold, operator)
+        
+        #Adjust sizes - treating 0 as base
+        #256 size in mag 0 is 512 in mag 1
+        x_size=int(x_size/Slide.MAG_fACTORS[mag])
+        y_size=int(y_size/Slide.MAG_fACTORS[mag])
+        
+        print('x_size:{}'.format(x_size))
 
-        region=slide.read_region((x,y),mag,size)
-        mask=self.slide_mask[x:x+xsize,y:y+ysize]
+        region=self.read_region((x_min,y_min),mag,(x_size, y_size))
+        mask=self.slide_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
 
-        return region
+        return region, mask 
 
 
     def calculate_mean(self):
