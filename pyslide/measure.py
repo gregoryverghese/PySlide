@@ -38,4 +38,4 @@ def compute_pixel_weights(self):
         weights.append(list(values))
 
         finalWeights = list(zip(*weights))
-        averageWeights = [np.mean(np.array(w)) for w in finalWeights]
+        erageWeights = [np.mean(np.array(w)) for w in finalWeights]
