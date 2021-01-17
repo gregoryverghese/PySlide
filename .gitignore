@@ -5,4 +5,4 @@
 debug.log
 *.png
 *.json
-*pycache*
+*.pycache
