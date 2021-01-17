@@ -1,4 +1,8 @@
 *.swp
 *.swo
 *.ndpi
+*DS_Store*
 debug.log
+*.png
+*.json
+*pycache*
