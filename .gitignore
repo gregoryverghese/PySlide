@@ -129,3 +129,6 @@ dmypy.json
 .pyre/
 
 .DS_STORE
+
+# vim files
+.swp
