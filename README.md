@@ -82,33 +82,30 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+This library provides functionality to preprocess histolpathological whole slide images. Digital whole slide images are super high resolution images of a physical tissue specimen that has been removed during surgery and post biopsy. These specimens are stored on glass slides and scanned using a biological scanner. The digtal images are often around sizes of 100,000x100,000 pixels (1gb-4gb). 
 
-There are many great README templates available on GitHub, however, I didn't find one that really suit my needs so I created this enhanced one. I want to create a README template so amazing that it'll be the last one you ever need -- I think this is it.
+Due the large memory footprint analysing the images computationally can be a complex tasks particularly in the contect of machine learning. A number of approaches have been explored to ease the memory burden including tiling the image into smaller more manageable patches. This library provides, a hopefully, simple way to perform such techniques and save down the resultant files. Functionality includes:
 
-Here's why:
-* Your time should be focused on creating something amazing. A project that solves a problem and helps others
-* You shouldn't be doing the same tasks over and over like creating a README from scratch
-* You should element DRY principles to the rest of your life :smile:
+* patching methods to split the image into smaller tiles
+* generating mask representations of images for segmentation tasks
+* measuring class imbalance and calculating weights
+* sampling techniques
+* saving images in a number of different formats - HD5Y,LDB database,tfrecord files
 
-Of course, no one template will serve all projects since your needs may be different. So I'll be adding more in the near future. You may also suggest changes by forking this repo and creating a pull request or opening an issue. Thanks to all the people have have contributed to expanding this template!
-
-A list of commonly used resources that I find helpful are listed in the acknowledgements.
+I hope this hels saving some of the unneccessary and tedious time creating boilerplace code to preprocess such whole slide images for analysis.
 
 ### Built With
 
-This section should list any major frameworks that you built your project using. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
-* [Bootstrap](https://getbootstrap.com)
-* [JQuery](https://jquery.com)
-* [Laravel](https://laravel.com)
-
+* [openslide](https://openslide.org/)
+* [numpy](https://numpy.org/)
+* [opencv](https://opencv.org/)
 
 
 <!-- GETTING STARTED -->
 ## Getting Started
 
 This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
+ o get a local copy up and running follow these simple example steps.
 
 ### Prerequisites
 
