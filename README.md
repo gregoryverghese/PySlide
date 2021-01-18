@@ -37,7 +37,7 @@
 
   <p align="center">
     An awesome image processing library for histopathology slides!
-UNDER DEVELOPMENT
+                            UNDER DEVELOPMENT
     <br />
     <a href="https://github.com/othneildrew/Best-README-Template"><strong>Explore the docs »</strong></a>
     <br />
