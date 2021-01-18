@@ -82,17 +82,17 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-This library provides functionality to preprocess histolpathological whole slide images. Digital whole slide images are super high resolution images of a physical tissue specimen that has been removed during surgery and post biopsy. These specimens are stored on glass slides and scanned using a biological scanner. The digtal images are often around sizes of 100,000x100,000 pixels (1gb-4gb). 
+This library provides functionality to preprocess histolpathological whole slide images. Digital whole slides are super high resolution images of a physical tissue specimen that has been removed during surgery for assessment by a pathologist. These specimens are stored on glass slides and scanned using a biological scanner to produce an image around the size of 100,000x100,000 pixels (1gb-4gb). 
 
-Due the large memory footprint analysing the images computationally can be a complex tasks particularly in the contect of machine learning. A number of approaches have been explored to ease the memory burden including tiling the image into smaller more manageable patches. This library provides, a hopefully, simple way to perform such techniques and save down the resultant files. Functionality includes:
+Due to their large memory footprint, analysing the images computationally can be a complex task, particularly in the contect of machine learning. A number of approaches have been explored to ease the memory burden including tiling the image into smaller more manageable patches. This library provides, a hopefully, simple way to perform such techniques and save down the resultant files. Functionality includes:
 
 * patching methods to split the image into smaller tiles
 * generating mask representations of images for segmentation tasks
 * measuring class imbalance and calculating weights
 * sampling techniques
-* saving images in a number of different formats - HD5Y,LDB database,tfrecord files
+* saving images in a number of different formats - HDF5,LMDB,tfrecords,PNG
 
-I hope this hels saving some of the unneccessary and tedious time creating boilerplace code to preprocess such whole slide images for analysis.
+I hope this library can save some of the unneccessary and tedious time creating boilerplace code to preprocess such WSIs and is a useful tool for the digital pathology and medical AI community.
 
 ### Built With
 
@@ -118,12 +118,16 @@ Below are the installation steps for prerequities needed for PySlid
   ```sh
   pip install numpy 
   ```
+* opencv
+  ```sh
+  pip install opencv-python
+  ```
 
-Installation
+##Installation
 
 Clone the repo
    ```sh
-   git clone https://github.com/your_username_/Project-Name.git
+   git clone https://github.com/gregoryverghese/PySlide.git
    ```
 
 <!-- USAGE EXAMPLES -->
@@ -163,7 +167,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Your Name - [@your_twitter](https://twitter.com/your_username) - email@example.com
+Gregory Verghese - [@your_twitter](https://twitter.com/your_username) - gregory.verghese@gmail.com
 
 Project Link: [https://github.com/your_username/repo_name](https://github.com/your_username/repo_name)
 
@@ -172,19 +176,6 @@ Project Link: [https://github.com/your_username/repo_name](https://github.com/yo
 <!-- ACKNOWLEDGEMENTS -->
 ## Acknowledgements
 * [GitHub Emoji Cheat Sheet](https://www.webpagefx.com/tools/emoji-cheat-sheet)
-* [Img Shields](https://shields.io)
-* [Choose an Open Source License](https://choosealicense.com)
-* [GitHub Pages](https://pages.github.com)
-* [Animate.css](https://daneden.github.io/animate.css)
-* [Loaders.css](https://connoratherton.com/loaders)
-* [Slick Carousel](https://kenwheeler.github.io/slick)
-* [Smooth Scroll](https://github.com/cferdinandi/smooth-scroll)
-* [Sticky Kit](http://leafo.net/sticky-kit)
-* [JVectorMap](http://jvectormap.com)
-* [Font Awesome](https://fontawesome.com)
-
-
-
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
