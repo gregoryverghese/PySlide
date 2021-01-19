@@ -1,10 +1,10 @@
 
-mport os
+import os
 import json
 
 
 class Annotations():
-    def __init__(self, labels, paths, file_type, keys):
+    def __init__(self, paths, file_type):
         self.paths=paths 
         self.type = file_type
 
