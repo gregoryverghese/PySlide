@@ -4,8 +4,6 @@
 '''
 patch.py
 '''
-
-
 import numpy as np
 import cv2
 import sys
@@ -133,7 +131,7 @@ class Preprocessing():
         self._weights = None
 
     @property
-    def (self):
+    def weights(self):
         return self_weights
 
 
