@@ -1,3 +1,6 @@
 *.ndpi
 *DS_Store
 *venv
+*.ipynb
+*.swp
+*__pycache__
