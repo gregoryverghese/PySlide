@@ -38,7 +38,7 @@
   <p align="center">UNDER DEVELOPMENT</p>
 
   <p align="center">
-    An awesome README template to jumpstart your projects!
+    An awesome histopathology whole slide image processing library!
     <br />
     <a href="https://github.com/othneildrew/Best-README-Template"><strong>Explore the docs »</strong></a>
     <br />
@@ -85,8 +85,9 @@
 
 This library provides functionality to preprocess histolpathological whole slide images. Digital whole slides are super high resolution images of a physical tissue specimen that has been removed during surgery for assessment by a pathologist. These specimens are stored on glass slides and scanned using a biological scanner to produce an image around the size of 100,000x100,000 pixels (1gb-4gb). 
 
-Due to their large memory footprint, analysing the images computationally can be a complex task, particularly in the contect of machine learning. A number of approaches have been explored to ease the memory burden including tiling the image into smaller more manageable patches. This library provides, a hopefully, simple way to perform such techniques and save down the resultant files. Functionality includes:
+Due to their large memory footprint, analysing the images computationally can be a complex task, particularly in the contect of machine learning. Libraries such as openslide provide a nice framework to open and work with these images in languages like python but lack a richer set of functions for more advanced preprocessing amnd analysis. This library is the beginnings of a comprehensive framework to work and manipulate WSIs particularly with a focus on machine learning. For example, A number of approaches have been explored to ease the memory burden for training ml wholeslide image datasets including tiling the image into smaller more manageable patches. This library provides, a hopefully, simple way to perform such techniques and save down the resultant files. Functionality includes:
 
+* a wrapper around openslides OpenSlide class to include annotations
 * patching methods to split the image into smaller tiles
 * generating mask representations of images for segmentation tasks
 * measuring class imbalance and calculating weights
