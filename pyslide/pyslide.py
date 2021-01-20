@@ -28,7 +28,6 @@ class Slide(OpenSlide):
         elif border=='fullsize':
             self._border=[[0,self.dims[0]],[0,self.dims[1]]]
 
-
     @property
     def border(self):
         return self._border
@@ -65,8 +64,8 @@ class Slide(OpenSlide):
         return self._slide_mask
 
 
-
-    def generate_annotations(self,labels,path,file_type):
+    @staticmethod 
+    def generate_annotations(labels,path,file_type):
 
         annotations_obj=Annotations(path, file_type)
         self.annotations = annotations.generate_annotations(labels)
@@ -140,15 +139,15 @@ class Slide(OpenSlide):
         if mask:
             cv2.imwrite(path,self._slide_mask)
         else: 
-        image = self.get_thumbnail(size)
-        if mask:
-            cv2.imread(path,image)
+            image = self.get_thumbnail(size)
+            image = image.convert('RGB')
+            image = np.array(image)
+            cv2.imwrite(path,image)
 
 
 
 
 
-######################################################################3
 
             
 
