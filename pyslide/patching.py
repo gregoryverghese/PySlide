@@ -2,6 +2,9 @@ import numpy as np
 import openslide
 from matplotlib.path import Path
 
+#from pyslide import Slide
+from PySlide.pyslide import Slide
+
 class Patching(Slide):
 
     MAG_fACTORS={0:1,1:2,3:4,4:16,5:32}
