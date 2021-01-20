@@ -11,8 +11,6 @@ from openslide import OpenSlide
 from itertools import chain
 import operator as op
 
-import annotations.Annotations
-
 
 class Slide(OpenSlide):
 
@@ -29,7 +27,8 @@ class Slide(OpenSlide):
             self._border=self.draw_border()
         elif border=='fullsize':
             self._border=[[0,self.dims[0]],[0,self.dims[1]]]
-       
+
+
     @property
     def border(self):
         return self._border
@@ -47,6 +46,26 @@ class Slide(OpenSlide):
             #TODO need to raise an exception
         
 
+    def slide_mask(self, size=None):
+        
+        colors=[(255,0,0),(0,255,0),(0,0,255)]
+        x, y = self.dims[0], self.dims[1]
+        slide_mask=np.zeros((y, x, 3), dtype=np.uint8)
+        
+        for k in self.annotations:
+            v = self.annotations[k]
+            v = [np.array(a) for a in v]
+            cv2.fillPoly(slide_mask, v, color=colors[k])
+
+        if size is not None:
+            slide_mask=cv2.resize(slide_mask, size)
+             
+        self._slide_mask=slide_mask
+        
+        return self._slide_mask
+
+
+
     def generate_annotations(self,labels,path,file_type):
 
         annotations_obj=Annotations(path, file_type)
@@ -55,85 +74,9 @@ class Slide(OpenSlide):
         return self.annotations
 
 
-#TODO discard patches at borders that do not match size
-    def generate_patches(self):
-    
-        mask=self.slide_mask()
-
-        for p in patching:
-            self.patches.append({'x':x,'y':y})
-            mask = self.slide_mask[y:y+self.size[0],x:x+self.size[1]]
-            classes = dict(zip(*np.unique(mask,return_counts=True)))
-            self._class_no.append(len(classes))
-            self.masks.append({'x':x, 'y':y, 'classes':classes})
-
-        if self.mode=='focus':
-            self.contains()
-
-        return len(self._patches)
-
-
-    def focus(self):
-
-        index  = [i for i in range(len(self._class_no)) 
-                  if self._class_no[i] > 1]
-
-        self._patches = [self.patches[i] for i in index]
-
-        return len(self._patches)
-
-    
-    #TODO:check my filter method
-    @staticmethod 
-    def contains(verts):
-
-        xx,yy=np.meshgrid(np.arange(300),np.arange(300))
-        xx,yy=xx.flatten(),yy.flatten()
-        verts=np.stack([x,y]).T
-        p=Path(verts)
-        mask=p.contains_points(verts)
-        num=(tolerance*grid.shape[0])
-        x = len(grid[grid==True])
-        return verts
-
-
-    #Do we want to use filtering based on orign point
-    #or do we want to filter based on all points within patch
-    def within(self, boundaries=None):
-
-        if boundaries is None:
-            boundaries=self.slide.border
-
-        path = Path(boundaries)
-        f = lambda x: p.contains([x['x'],x['y']])
-        self_.patches=list(filter(f, self._patches))
-    
-        return self_patches
-    
-    
-    def extract_patch(self, x=None, y=None):
-        patch=self.slide.read_region(x,y,self.mag_level,(self.size[0],self.size[1]))
-        return patch    def slide_mask(self, size=None):
-        
-        x, y = self.dims[0], self.dims[1]
-        slide_mask=np.zeros((x, y), dtype=np.uint8)
-
-        for k in self.annotations:
-            v = self.annotations[k]
-            v = [np.array(a) for a in v]
-            cv2.fillPoly(slide_mask, v, color=k)
-
-        if size is not None:
-            slide_mask=cv2.resize(slide_mask, size)
-        
-        self._slide_mask=slide_mask
-
-        return slide_mask
-
-
     @staticmethod   
     def resize_border(dim, factor=1, threshold=None, operator='=>'):
-        
+       
         if threshold is None:
             threshold=dim
 
@@ -192,8 +135,15 @@ class Slide(OpenSlide):
         return region, mask
 
     
-    def save(self):
-        pass
+    def save(self, path, size=(2000,2000), mask=False):
+
+        if mask:
+            cv2.imwrite(path,self._slide_mask)
+        else: 
+        image = self.get_thumbnail(size)
+        if mask:
+            cv2.imread(path,image)
+
 
 
 
