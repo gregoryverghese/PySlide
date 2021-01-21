@@ -1,12 +1,15 @@
-#!/usr/local/share python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 '''
 pyslide.py
 '''
+
+import sys
+import os
+
 import numpy as np
 import cv2
-import sys
 from openslide import OpenSlide
 from itertools import chain
 import operator as op
@@ -22,6 +25,7 @@ class Slide(OpenSlide):
         self.annotations=annotations
         self._slide_mask=None
         self.dims = self.dimensions
+        self.name = os.path.basename(filename)[:-4]
 
         if border=='draw':
             self._border=self.draw_border()
