@@ -1,13 +1,18 @@
+#!usr/bin/env python3
+
+import os
+
 import numpy as np
 import openslide
+import cv2
 from matplotlib.path import Path
 
-#from pyslide import Slide
 from PySlide.pyslide import Slide
 
-class Patching(Slide):
 
-    MAG_fACTORS={0:1,1:2,3:4,4:16,5:32}
+class Patching():
+
+    MAG_FACTORS={0:1,1:2,3:4,4:16,5:32}
 
     def __init__(self, slide, annotations, size=(256, 256), mag_level=0,
             border=None, mode=False):
@@ -16,14 +21,12 @@ class Patching(Slide):
         self.slide=slide 
         self.mag_level = mag_level
         self.size = size
-        self.mode = mode 
+        #self.mode = mode 
         self._number = None
-        self._step = step 
         self._patches = []
         self._masks = []
-        self._slide_mask = None
         self._class_no = []
-        self.__magfactor=mag_factors[self.mag_level]
+        self.__magfactor=Patching.MAG_FACTORS[self.mag_level]
     
 
     @property
@@ -40,48 +43,52 @@ class Patching(Slide):
     def annotations(self):
         return _self.annotations
 
-    
-    @property 
-    def step(self):
-        return self._step
+
+    @property
+    def slide_mask(self):
+        return self.slide._slide_mask
 
 
-    @step.setter
-    def step(self, value):
-        step=step*MAG_FACTORS[self.mag_level]
-        self._step=step
+    @staticmethod
+    def patching(step,xmin,xmax,ymin,ymax):
 
-    
-    def patching(self):
-
-        xmin, xmax = border[0][0], border[0][1]
-        ymin, ymax = border[1][0], border[1][1]
-        for x in range(xmin,xmax, self.step):
-            for y in range(ymin,ymax,self.step): 
+        for x in range(xmin,xmax, step):
+            for y in range(ymin,ymax,step): 
                 yield x, y
 
-#TODO discard patches at borders that do not match size
-    def generate_patches(self):
-    
-        mask=self.slide_mask()
+    @property
+    def slide_mask(self):
+        return self.slide._slide_mask
 
-        for p in patching:
+
+    #TODO discard patches at borders that do not match size
+    def generate_patches(self,step, mode='sparse'):
+   
+        step=step*self.__magfactor
+        #mask=self._slide_mask()
+        #mask=self.slide._slide_mask
+
+        xmin, xmax = self.slide.border[0][0], self.slide.border[0][1]
+        ymin, ymax = self.slide.border[1][0], self.slide.border[1][1]
+
+        for x, y in self.patching(step, xmin,xmax,ymin,ymax):
+
             self.patches.append({'x':x,'y':y})
-            mask = self.slide_mask[y:y+self.size[0],x:x+self.size[1]]
-            classes = dict(zip(*np.unique(mask,return_counts=True)))
-            self._class_no.append(len(classes))
+            mask = self.slide._slide_mask[y:y+self.size[0],x:x+self.size[1]]
+
+            classes = len(np.unique(mask)) if mode=='focus' else 1
             self.masks.append({'x':x, 'y':y, 'classes':classes})
 
-        if self.mode=='focus':
-            self.contains()
+        if mode=='focus':
+            self.focus()
 
         return len(self._patches)
 
 
     def focus(self):
 
-        index  = [i for i in range(len(self._class_no)) 
-                  if self._class_no[i] > 1]
+        index=[i for i in range(len(self._patches)) if
+               self._masks[i]['classes'] >1]
 
         self._patches = [self.patches[i] for i in index]
 
@@ -117,25 +124,75 @@ class Patching(Slide):
     
     
     def extract_patch(self, x=None, y=None):
-        patch=self.slide.read_region(x,y,self.mag_level,(self.size[0],self.size[1]))
+        patch=self.slide.read_region((x,y),self.mag_level,(self.size[0],self.size[1]))
+        patch=np.array(patch.convert('RGB'))
         return patch
 
 
     def extract_patches(self):
         for p in self._patches:
-            patch=extract_patch(p['x'],p['y'])
-            yield patch
+            patch=self.extract_patch(p['x'],p['y'])
+            yield patch,p['x'],p['y']
     
        
     def extract_mask(self, x=None, y=None):
-        mask=slide_mask[y:y+self.size[0],x:x+self.size[1]]
+        mask=self.slide_mask[y:y+self.size[0],x:x+self.size[1]]
         return mask 
     
     
     def extract_masks(self):
         for p in self._patches:
+            print(p['x'],p['y'])
             mask=self.extract_mask(p['x'],p['y'])
-            yield mask
+            yield mask,p['x'],p['y']
+
+
+    def save(self, path, mask=False, x=None, y=None):
+        
+        if (x and not y) or (not x and y):
+            raise ValueError('missing value for x or y')
+
+        patchpath=os.path.join(path,'images')
+        try:
+            os.mkdir(patchpath)
+        except OSError as error:
+            print(error)
+
+        maskpath=os.path.join(path,'masks')
+        try:
+            os.mkdir(os.path.join(maskpath))
+        except OSError as error:
+            print(error)
+
+        if not (x and y) is None:
+            patch=self.extract_patch()
+            patchpath=os.path.join(patchpath,self.slide.name+'_'+str(x)+'_'+str(y)+'.png')
+            patchstatus=cv2.imwrite(patchpath,patch)
+            if mask:
+                mask,x,y=self.extract_mask()
+                maskpath=os.path.join(maskpath,self.slide.name+'_'+str(x)+'_'+str(y)+'.png')
+                maskstatus=cv2.imwrite(maskpath,mask)
+                return patchstatus and maskstatus
+            return patchstatus 
+
+        for patch,x,y in self.extract_patches():
+            patchpath=os.path.join(patchpath,self.slide.name+'_'+str(x)+'_'+str(y)+'.png')
+            patchstatus=cv2.imwrite(patchpath,patch)
+            if mask:
+                mask,x,y=self.extract_masks()
+                maskpath=os.path.join(maskpath,self.slide.name+'_'+str(x)+'_'+str(y)+'.png')
+                maskstatus=cv2.imwrite(maskpath,mask)
+                return patchstatus and maskstatus  
+            return patchstatus   
+
+       
+
+
+
+
+        
+
+
 
 
 
