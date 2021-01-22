@@ -95,6 +95,71 @@ class Patching():
         return len(self._patches)
 
     
+    def extract_patch(self, x=None, y=None):
+        patch=self.slide.read_region((x,y),self.mag_level,(self.size[0],self.size[1]))
+        patch=np.array(patch.convert('RGB'))
+        return patch
+
+
+    def extract_patches(self):
+        for p in self._patches:
+            patch=self.extract_patch(p['x'],p['y'])
+            yield patch,p['x'],p['y']
+    
+       
+    def extract_mask(self, x=None, y=None):
+        #mask=self.slide_mask[y:y+self.size[0],x:x+self.size[1]]
+        mask=self.slide_mask[x:x+self.size[0],y:y+self.size[1]]
+        return mask 
+    
+    
+    #generator and next not working as I expected. Learn generators!
+    def extract_masks(self):
+        for m in self._masks:
+            mask=self.extract_mask(m['x'],m['y'])
+            yield mask,m['x'],m['y']
+
+
+    #TODO: how to save individiual patch and mask
+    @staticmethod
+    def saveimage(image,path,filename,x=None,y=None):
+        if (x and not y) or (not x and y):
+            raise ValueError('missing value for x or y')
+        elif (x and y) is None:
+            image_path=os.path.join(path,filename)
+        elif (x and y) is not None:
+             filename=filename+'_'+str(x)+'_'+str(y)+'.png'
+             image_path=os.path.join(path,filename)
+        status=cv2.imwrite(image_path,image)
+        return status
+    
+
+    #TODO fix masks. Currently saving only first mask over and over
+    def save(self, path, mask_flag=False):
+        
+        patchpath=os.path.join(path,'images')
+        try:
+            os.mkdir(patchpath)
+        except OSError as error:
+            print(error)
+
+        maskpath=os.path.join(path,'masks')
+        try:
+            os.mkdir(os.path.join(maskpath))
+        except OSError as error:
+            print(error)
+        
+        for patch,x,y in self.extract_patches(): 
+            patchstatus=self.saveimage(patch,patchpath,self.slide.name,x,y)
+            if mask_flag:
+                mask,x,y=next(self.extract_masks())
+                maskstatus=self.saveimage(mask,maskpath,self.slide.name,x,y)
+         
+
+       
+
+
+    '''    
     #TODO:check my filter method
     @staticmethod 
     def contains(verts):
@@ -121,79 +186,7 @@ class Patching():
         self_.patches=list(filter(f, self._patches))
     
         return self_patches
-    
-    
-    def extract_patch(self, x=None, y=None):
-        patch=self.slide.read_region((x,y),self.mag_level,(self.size[0],self.size[1]))
-        patch=np.array(patch.convert('RGB'))
-        return patch
-
-
-    def extract_patches(self):
-        for p in self._patches:
-            patch=self.extract_patch(p['x'],p['y'])
-            yield patch,p['x'],p['y']
-    
-       
-    def extract_mask(self, x=None, y=None):
-        mask=self.slide_mask[y:y+self.size[0],x:x+self.size[1]]
-        return mask 
-    
-    
-    def extract_masks(self):
-        for p in self._patches:
-            print(p['x'],p['y'])
-            mask=self.extract_mask(p['x'],p['y'])
-            yield mask,p['x'],p['y']
-
-
-    def save(self, path, mask=False, x=None, y=None):
-        
-        if (x and not y) or (not x and y):
-            raise ValueError('missing value for x or y')
-
-        patchpath=os.path.join(path,'images')
-        try:
-            os.mkdir(patchpath)
-        except OSError as error:
-            print(error)
-
-        maskpath=os.path.join(path,'masks')
-        try:
-            os.mkdir(os.path.join(maskpath))
-        except OSError as error:
-            print(error)
-
-        if not (x and y) is None:
-            patch=self.extract_patch()
-            patchpath=os.path.join(patchpath,self.slide.name+'_'+str(x)+'_'+str(y)+'.png')
-            patchstatus=cv2.imwrite(patchpath,patch)
-            if mask:
-                mask,x,y=self.extract_mask()
-                maskpath=os.path.join(maskpath,self.slide.name+'_'+str(x)+'_'+str(y)+'.png')
-                maskstatus=cv2.imwrite(maskpath,mask)
-                return patchstatus and maskstatus
-            return patchstatus 
-
-        for patch,x,y in self.extract_patches():
-            patchpath=os.path.join(patchpath,self.slide.name+'_'+str(x)+'_'+str(y)+'.png')
-            patchstatus=cv2.imwrite(patchpath,patch)
-            if mask:
-                mask,x,y=self.extract_masks()
-                maskpath=os.path.join(maskpath,self.slide.name+'_'+str(x)+'_'+str(y)+'.png')
-                maskstatus=cv2.imwrite(maskpath,mask)
-                return patchstatus and maskstatus  
-            return patchstatus   
-
-       
-
-
-
-
-        
-
-
-
+    '''
 
 
 '''
