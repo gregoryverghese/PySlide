@@ -14,40 +14,33 @@ class Patching():
 
     MAG_FACTORS={0:1,1:2,3:4,4:16,5:32}
 
-    def __init__(self, slide, annotations, size=(256, 256), mag_level=0,
-            border=None, mode=False):
+    def __init__(self, slide, annotations, size=(256, 256), 
+                 mag_level=0,border=None, mode=False):
     
         super().__init__()
         self.slide=slide 
-        self.mag_level = mag_level
-        self.size = size
-        #self.mode = mode 
-        self._number = None
-        self._patches = []
-        self._masks = []
-        self._class_no = []
-        self.__magfactor=Patching.MAG_FACTORS[self.mag_level]
+        self.mag_level=mag_level
+        self.size=size
+        self._number=None
+        self._patches=[]
+        self._masks=[]
+        self._magfactor=Patching.MAG_FACTORS[self.mag_level]
     
-
     @property
     def masks(self):
         return self._masks
     
-
     @property
     def patches(self):
         return self._patches
-
 
     @property
     def annotations(self):
         return _self.annotations
 
-
     @property
     def slide_mask(self):
         return self.slide._slide_mask
-
 
     @staticmethod
     def patching(step,xmin,xmax,ymin,ymax):
@@ -56,18 +49,12 @@ class Patching():
             for y in range(ymin,ymax,step): 
                 yield x, y
 
-    @property
-    def slide_mask(self):
-        return self.slide._slide_mask
-
 
     #TODO discard patches at borders that do not match size
     def generate_patches(self,step, mode='sparse'):
    
-        step=step*self.__magfactor
-        #mask=self._slide_mask()
-        #mask=self.slide._slide_mask
-
+        step=step*self._magfactor
+        
         xmin, xmax = self.slide.border[0][0], self.slide.border[0][1]
         ymin, ymax = self.slide.border[1][0], self.slide.border[1][1]
 
@@ -82,19 +69,37 @@ class Patching():
         if mode=='focus':
             self.focus()
 
-        return len(self._patches)
-
+        self._number=len(self._patches)
+        return self._number
+    
 
     def focus(self):
 
         index=[i for i in range(len(self._patches)) if
                self._masks[i]['classes'] >1]
-
         self._patches = [self.patches[i] for i in index]
+        self._masks = [self.masks[i] for i in index]
 
         return len(self._patches)
 
-    
+
+    #TODO:how do we set a threshold in multisclass
+    def generate_labels(self,threshold=None):
+        labels=[]
+        for m,x,y in self.extract_masks():
+            cls,cnt=np.unique(m, return_counts=True)  
+            y=cls[cnt==cnt.max()]
+            self._masks['labels']=y
+            #TODO:do we want a labels attribute
+            labels.append(y)
+        
+        return np.unique(np.array(labels),return_counts=True)
+            
+
+    def plotlabeldist(self):
+        pass
+
+
     def extract_patch(self, x=None, y=None):
         patch=self.slide.read_region((x,y),self.mag_level,(self.size[0],self.size[1]))
         patch=np.array(patch.convert('RGB'))
@@ -108,8 +113,8 @@ class Patching():
     
        
     def extract_mask(self, x=None, y=None):
-        #mask=self.slide_mask[y:y+self.size[0],x:x+self.size[1]]
-        mask=self.slide_mask[x:x+self.size[0],y:y+self.size[1]]
+        mask=self.slide_mask[y:y+self.size[0],x:x+self.size[1]]
+        #mask=self.slide_mask[x:x+self.size[0],y:y+self.size[1]]
         return mask 
     
     
@@ -155,9 +160,6 @@ class Patching():
                 mask,x,y=next(self.extract_masks())
                 maskstatus=self.saveimage(mask,maskpath,self.slide.name,x,y)
          
-
-       
-
 
     '''    
     #TODO:check my filter method
