@@ -82,17 +82,26 @@ class Patching():
 
         return len(self._patches)
 
+    
+    @staticmethod
+    def __filter(cls,cnt,threshold):
+        ratio=y/float(sum(cnt))
+        return ratio>=threshold
 
+    
     #TODO:how do we set a threshold in multisclass
-    def generate_labels(self,threshold=None):
+    def generate_labels(self,threshold=1):
         labels=[]
         for m,x,y in self.extract_masks():
-            cls,cnt=np.unique(m, return_counts=True)  
+            cls,cnt=np.unique(m, return_counts=True)
             y=cls[cnt==cnt.max()]
-            self._masks['labels']=y
-            #TODO:do we want a labels attribute
-            labels.append(y)
-        
+            if __filter(cls,cnt,threshold) 
+                self._masks['labels']=y
+                labels.append(y)
+            else:
+                self._masks['labels']=cls  
+                #TODO:do we want a labels attribute
+                labels.append(y)
         return np.unique(np.array(labels),return_counts=True)
             
 
