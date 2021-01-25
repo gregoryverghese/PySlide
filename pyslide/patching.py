@@ -5,9 +5,12 @@ import os
 import numpy as np
 import openslide
 import cv2
+import seaborn as sns
 from matplotlib.path import Path
 
 from PySlide.pyslide import Slide
+
+print(sns.__version__)
 
 
 class Patching():
@@ -25,7 +28,7 @@ class Patching():
         self._patches=[]
         self._masks=[]
         self._magfactor=Patching.MAG_FACTORS[self.mag_level]
-    
+
     @property
     def masks(self):
         return self._masks
@@ -41,6 +44,21 @@ class Patching():
     @property
     def slide_mask(self):
         return self.slide._slide_mask
+    
+    @property
+    def config(self):
+        config={'name':self.slide.name,
+                'mag':self.mag_level,
+                'size':self.size,
+                'border':self.slide.border,
+                'mode':None,
+                'number':self._number}
+        return config
+     
+
+    def __repr__(self):
+        return str(self.config)
+
 
     @staticmethod
     def patching(step,xmin,xmax,ymin,ymax):
@@ -52,31 +70,39 @@ class Patching():
 
     #TODO discard patches at borders that do not match size
     def generate_patches(self,step, mode='sparse'):
-   
+        print(sns.__version__) 
         step=step*self._magfactor
         
         xmin, xmax = self.slide.border[0][0], self.slide.border[0][1]
         ymin, ymax = self.slide.border[1][0], self.slide.border[1][1]
 
-        for x, y in self.patching(step, xmin,xmax,ymin,ymax):
+        for x, y in self.patching(step,xmin,xmax,ymin,ymax):
 
             self.patches.append({'x':x,'y':y})
             mask = self.slide._slide_mask[y:y+self.size[0],x:x+self.size[1]]
-
-            classes = len(np.unique(mask)) if mode=='focus' else 1
-            self.masks.append({'x':x, 'y':y, 'classes':classes})
-
-        if mode=='focus':
-            self.focus()
+           
+            #TODO:Do we store that mask class info
+            #expensive operation but clearly useful
+            if mode=='focus':
+                classes = len(np.unique(mask))
+                self._masks.append({'x':x, 'y':y, 'classes':classes})
+                self.focus()
+            else:
+                self._masks.append({'x':x, 'y':y})
 
         self._number=len(self._patches)
         return self._number
     
 
-    def focus(self):
+    def focus(self, task='classes'):
+        
+        if task=='classes':
+            index=[i for i in range(len(self._patches)) if
+                  self._masks[i][task] >1]
+        elif task=='labels':
+            index=[i for i in range(len(self._patches)) if
+                   self._masks[i][task]!=9]
 
-        index=[i for i in range(len(self._patches)) if
-               self._masks[i]['classes'] >1]
         self._patches = [self.patches[i] for i in index]
         self._masks = [self.masks[i] for i in index]
 
@@ -84,29 +110,34 @@ class Patching():
 
     
     @staticmethod
-    def __filter(cls,cnt,threshold):
-        ratio=y/float(sum(cnt))
+    def __filter(y_cnt,cnts,threshold):
+        ratio=y_cnt/float(sum(cnts))
+        print(ratio>=threshold)
         return ratio>=threshold
 
     
     #TODO:how do we set a threshold in multisclass
     def generate_labels(self,threshold=1):
         labels=[]
-        for m,x,y in self.extract_masks():
-            cls,cnt=np.unique(m, return_counts=True)
-            y=cls[cnt==cnt.max()]
-            if __filter(cls,cnt,threshold) 
-                self._masks['labels']=y
+        for i, (m,x,y) in enumerate(self.extract_masks()):
+            cls,cnts=np.unique(m, return_counts=True)
+            y=cls[cnts==cnts.max()]
+            y_cnt=cnts.max()
+            if self.__filter(y_cnt,cnts,threshold): 
+                self.masks[i]['labels']=y[0]
                 labels.append(y)
             else:
-                self._masks['labels']=cls  
+                self.masks[i]['labels']=9 
                 #TODO:do we want a labels attribute
                 labels.append(y)
+
         return np.unique(np.array(labels),return_counts=True)
             
 
     def plotlabeldist(self):
-        pass
+        labels=[self.masks[i]['labels'] for i in range(len(self.masks))]
+        return sns.distplot(labels)
+    
 
 
     def extract_patch(self, x=None, y=None):
@@ -120,9 +151,12 @@ class Patching():
             patch=self.extract_patch(p['x'],p['y'])
             yield patch,p['x'],p['y']
     
-       
+
+    #TODO: we need to sort out how we deal with channels
+    # when we have binary and multisclass cases
+    #right now we assume binary
     def extract_mask(self, x=None, y=None):
-        mask=self.slide_mask[y:y+self.size[0],x:x+self.size[1]]
+        mask=self.slide_mask[y:y+self.size[0],x:x+self.size[1]][:,:,0]
         #mask=self.slide_mask[x:x+self.size[0],y:y+self.size[1]]
         return mask 
     
