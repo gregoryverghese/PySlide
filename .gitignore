@@ -1,6 +1,6 @@
 *.ndpi
 *.png
-*DS_Store
+*.DS_Store
 *venv
 *.ipynb
 *.swp

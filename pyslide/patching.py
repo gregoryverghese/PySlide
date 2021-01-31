@@ -27,7 +27,6 @@ class Patching():
         self._number=None
         self._patches=[]
         self._masks=[]
-        self._magfactor=Patching.MAG_FACTORS[self.mag_level]
 
     @property
     def masks(self):
@@ -40,6 +39,10 @@ class Patching():
     @property
     def annotations(self):
         return _self.annotations
+
+    @property
+    def mag_factor(self):
+        return Patching.MAG_FACTORS[self.mag_level]
 
     @property
     def slide_mask(self):
@@ -64,18 +67,16 @@ class Patching():
     def patching(step,xmin,xmax,ymin,ymax):
 
         for x in range(xmin,xmax, step):
-            for y in range(ymin,ymax,step): 
+            for y in range(ymin,ymax,step):
                 yield x, y
 
 
     #TODO discard patches at borders that do not match size
     def generate_patches(self,step, mode='sparse'):
-        print(sns.__version__) 
-        step=step*self._magfactor
-        
+        #DO we leave the step multiplier here
+        step=step*self.mag_factor
         xmin, xmax = self.slide.border[0][0], self.slide.border[0][1]
         ymin, ymax = self.slide.border[1][0], self.slide.border[1][1]
-
         for x, y in self.patching(step,xmin,xmax,ymin,ymax):
 
             self.patches.append({'x':x,'y':y})
@@ -139,9 +140,17 @@ class Patching():
         return sns.distplot(labels)
     
 
-
+    #TODO: maybe we don't need .5 - should check 
     def extract_patch(self, x=None, y=None):
-        patch=self.slide.read_region((x,y),self.mag_level,(self.size[0],self.size[1]))
+        print(x,y)
+        x_size=int(self.size[0]*self.mag_factor*.5)
+        y_size=int(self.size[1]*self.mag_factor*.5)
+        #x=x*self.mag_factor
+        #y=y*self.mag_factor
+
+
+        patch=self.slide.read_region((x-x_size,y-y_size), self.mag_level,
+                                     (self.size[0],self.size[1]))
         patch=np.array(patch.convert('RGB'))
         return patch
 
@@ -156,7 +165,10 @@ class Patching():
     # when we have binary and multisclass cases
     #right now we assume binary
     def extract_mask(self, x=None, y=None):
-        mask=self.slide_mask[y:y+self.size[0],x:x+self.size[1]][:,:,0]
+
+        x_size=int(self.size[0]*self.mag_factor*.5)
+        y_size=int(self.size[1]*self.mag_factor*.5)
+        mask=self.slide_mask[y:y+y_size,x:x+x_size][:,:,0]
         #mask=self.slide_mask[x:x+self.size[0],y:y+self.size[1]]
         return mask 
     
@@ -196,11 +208,12 @@ class Patching():
             os.mkdir(os.path.join(maskpath))
         except OSError as error:
             print(error)
-        
+        test=self.extract_masks()
         for patch,x,y in self.extract_patches(): 
             patchstatus=self.saveimage(patch,patchpath,self.slide.name,x,y)
             if mask_flag:
-                mask,x,y=next(self.extract_masks())
+                
+                mask,x,y=next(test)
                 maskstatus=self.saveimage(mask,maskpath,self.slide.name,x,y)
          
 
