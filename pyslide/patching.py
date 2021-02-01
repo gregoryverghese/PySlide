@@ -10,8 +10,6 @@ from matplotlib.path import Path
 
 from PySlide.pyslide import Slide
 
-print(sns.__version__)
-
 
 class Patching():
 
@@ -113,7 +111,6 @@ class Patching():
     @staticmethod
     def __filter(y_cnt,cnts,threshold):
         ratio=y_cnt/float(sum(cnts))
-        print(ratio>=threshold)
         return ratio>=threshold
 
     
@@ -142,12 +139,8 @@ class Patching():
 
     #TODO: maybe we don't need .5 - should check 
     def extract_patch(self, x=None, y=None):
-        print(x,y)
         x_size=int(self.size[0]*self.mag_factor*.5)
         y_size=int(self.size[1]*self.mag_factor*.5)
-        #x=x*self.mag_factor
-        #y=y*self.mag_factor
-
 
         patch=self.slide.read_region((x-x_size,y-y_size), self.mag_level,
                                      (self.size[0],self.size[1]))
@@ -161,19 +154,16 @@ class Patching():
             yield patch,p['x'],p['y']
     
 
-    #TODO: we need to sort out how we deal with channels
-    # when we have binary and multisclass cases
-    #right now we assume binary
     def extract_mask(self, x=None, y=None):
 
         x_size=int(self.size[0]*self.mag_factor*.5)
         y_size=int(self.size[1]*self.mag_factor*.5)
-        mask=self.slide_mask[y:y+y_size,x:x+x_size][:,:,0]
-        #mask=self.slide_mask[x:x+self.size[0],y:y+self.size[1]]
+        mask=self.slide_mask[y-y_size:y+y_size,x-x_size:x+x_size][:,:,0]
+        mask=cv2.resize(mask,(self.size[0],self.size[1]))
+
         return mask 
     
     
-    #generator and next not working as I expected. Learn generators!
     def extract_masks(self):
         for m in self._masks:
             mask=self.extract_mask(m['x'],m['y'])
@@ -208,12 +198,12 @@ class Patching():
             os.mkdir(os.path.join(maskpath))
         except OSError as error:
             print(error)
-        test=self.extract_masks()
+        masks_generator=self.extract_masks()
         for patch,x,y in self.extract_patches(): 
             patchstatus=self.saveimage(patch,patchpath,self.slide.name,x,y)
             if mask_flag:
                 
-                mask,x,y=next(test)
+                mask,x,y=next(mask_generator)
                 maskstatus=self.saveimage(mask,maskpath,self.slide.name,x,y)
          
 
