@@ -48,17 +48,27 @@ class Slide(OpenSlide):
             pass
             #TODO need to raise an exception
         
+    
+    def oneHotToMask(onehot):
+
+        nClasses =  onehot.shape[-1]
+        idx = tf.argmax(onehot, axis=-1)
+        colors = sns.color_palette('hls', nClasses)
+        multimask = tf.gather(colors, idx)
+        multimask = np.where(multimask[:,:,:]==colors[0], 0, multimask[:,:,:])
+
+        return multimask
+
 
     def slide_mask(self, size=None):
         
-        colors=[(255,0,0),(0,255,0),(0,0,255)]
         x, y = self.dims[0], self.dims[1]
         slide_mask=np.zeros((y, x, 3), dtype=np.uint8)
         
         for k in self.annotations:
             v = self.annotations[k]
             v = [np.array(a) for a in v]
-            cv2.fillPoly(slide_mask, v, color=colors[k])
+            cv2.fillPoly(slide_mask, v, color=k)
 
         if size is not None:
             slide_mask=cv2.resize(slide_mask, size)

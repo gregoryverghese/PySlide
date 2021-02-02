@@ -47,3 +47,13 @@ def getRegions(xmlFileName):
         labelAreas[a] = region
  
     return labelAreas
+
+
+def oneHotToMask(onehot):
+    nClasses =  onehot.shape[-1]
+    idx = tf.argmax(onehot, axis=-1)
+    colors = sns.color_palette('hls', nClasses)
+    multimask = tf.gather(colors, idx)
+    multimask = np.where(multimask[:,:,:]==colors[0], 0, multimask[:,:,:])
+
+    return multimaski)
