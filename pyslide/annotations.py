@@ -1,7 +1,4 @@
 
-import os
-import json
-
 
 class Annotations():
     def __init__(self, paths, file_type):

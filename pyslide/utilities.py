@@ -56,4 +56,4 @@ def oneHotToMask(onehot):
     multimask = tf.gather(colors, idx)
     multimask = np.where(multimask[:,:,:]==colors[0], 0, multimask[:,:,:])
 
-    return multimaski)
+    return multimask

@@ -4,5 +4,10 @@
 *venv
 *.ipynb
 *.swp
+*.json
+*.xml
 *__pycache__
-
+scrapbook.py
+test.py
+measure.py
+save.py
