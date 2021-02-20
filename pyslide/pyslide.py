@@ -19,10 +19,16 @@ class Slide(OpenSlide):
 
     MAG_fACTORS={0:1,1:2,3:4,4:16,5:32}
 
-    def __init__(self, filename, border, annotations=None):
+    def __init__(self, filename, border,
+                 annotations=None,annotations_path=None;):
         super().__init__(filename)
         
-        self.annotations=annotations
+        if annotations_path not None:
+            ann=Annotations(annotations_path,labels)
+            self.annotations=ann.generate_annotations()
+        else:
+            self.annotations=annotations
+        
         self._slide_mask=None
         self.dims = self.dimensions
         self.name = os.path.basename(filename)[:-4]
@@ -161,24 +167,19 @@ class Slide(OpenSlide):
 
 
 class Annotations():
-    def __init__(self, paths, file_type):
+    def __init__(self, paths, file_type=None):
         self.paths=paths 
         self.type = file_type
         self.labels = labels
 
-    def generate_annotations(self, labels):
+    def generate_annotations(self):
 
-        with open(self.paths) as json_file:
-            json_annotations=json.load(json_file)
-            keys = list(json_annotations.keys())
-
-        for k in keys:
-            if k not in labels:
-                del json_annotations[k]
+        if file_type in ['imagej','xml']:
+            annotations=self._xml_file()
+        elif paths.endswith('json'):
+            annotations=self._json_file():
         
-        annotations = {labels[k]: [[[int(i['x']), int(i['y'])] for i in v2] for
-                      k2, v2 in v.items()]for k, v in json_annotations.items()}
-    
+        annotations=filter_labels(annotations)
         return annotations
 
 
@@ -187,15 +188,21 @@ class Annotations():
         for k in keys:
             if k not in self.labels:
                 del annotations[k]
-        return annotations
-       
-
-    def imagej(self):
-        pass
+        return annotations       
 
 
     def _xml_file(self):
-        pass
+            
+        annotations={}
+        pixelSpacing = float(root.get('MicronsPerPixel'))
+        for l in labels:
+            l_dict={}
+            for i,c in enumerate(labels[l]):
+                verts=c[1].findall('Vertex')
+                verts=[(x.attrib['X'], x.attrib['Y']) for x in verts]
+                l_dict[i]=[(int(float(x)),int(float(y))) for x,y in verts]
+                annotations[l]=l_dict
+        return annotations
 
 
     def _json_file(self):
@@ -205,4 +212,14 @@ class Annotations():
 
         annotations = {labels[k]: [[[int(i['x']), int(i['y'])] for i in v2] for
                        k2, v2 in v.items()]for k, v in json_annotations.items()}
+        return annotations
+
+
+
+    def _dataframe(self):
+        pass
+
+
+    def _csv(self):
+        pass
 
