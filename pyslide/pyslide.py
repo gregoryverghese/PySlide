@@ -4,12 +4,14 @@
 '''
 pyslide.py
 '''
-
 import sys
 import os
+import json
+import xml.etree.ElementTree as ET
 
-import numpy as np
 import cv2
+import numpy as np
+import pandas as pd
 from openslide import OpenSlide
 from itertools import chain
 import operator as op
@@ -19,11 +21,11 @@ class Slide(OpenSlide):
 
     MAG_fACTORS={0:1,1:2,3:4,4:16,5:32}
 
-    def __init__(self, filename, border,
-                 annotations=None,annotations_path=None;):
+    def __init__(self, filename, border,annotations=None,
+                 annotations_path=None):
         super().__init__(filename)
         
-        if annotations_path not None:
+        if annotations_path is not None:
             ann=Annotations(annotations_path,labels)
             self.annotations=ann.generate_annotations()
         else:
@@ -167,53 +169,84 @@ class Slide(OpenSlide):
 
 
 class Annotations():
-    def __init__(self, paths, file_type=None):
-        self.paths=paths 
-        self.type = file_type
+    def __init__(self, path, annotation_type=None,labels=None):
+        self.path=path 
+        self.annotation_type = annotation_type
         self.labels = labels
+        self._annotations=None
+
+
+    @property
+    def class_key(self):
+        if self.labels is not None:
+            class_key={l:i for i, l in enumerate(self.labels)}
+        return class_key
+
+
 
     def generate_annotations(self):
 
-        if file_type in ['imagej','xml']:
-            annotations=self._xml_file()
-        elif paths.endswith('json'):
-            annotations=self._json_file():
+        if self.annotation_type in ['imagej','xml']:
+            annotations=self._xml()
+        elif self.annotation_type=='json':
+            annotations=self._json()
+        elif self.path.endswith('json'):
+            annotations=self._json()
+        elif self.path.endswith('xml'):
+            annotations=self._xml()
         
-        annotations=filter_labels(annotations)
+        if self.labels is not None:
+            #annotations=self.filter_labels(annotations)
+            pass
+
         return annotations
 
 
     def filter_labels(self,annotations):
-        keys = list(json_annotations.keys())
+
+        keys = list(annotations.keys())
         for k in keys:
             if k not in self.labels:
                 del annotations[k]
         return annotations       
 
 
-    def _xml_file(self):
-            
+    def _xml(self):
+        
+        tree=ET.parse(self.path)
+        root=tree.getroot()
+        regions = {n.attrib['Name']: n[1].findall('Region') for n in root}
+
+        if self.labels is None:
+            self.labels=list(regions.keys())
+        
         annotations={}
-        pixelSpacing = float(root.get('MicronsPerPixel'))
-        for l in labels:
-            l_dict={}
-            for i,c in enumerate(labels[l]):
+        for l in regions:
+            region_dict={}
+            for i,c in enumerate(regions[l]):
                 verts=c[1].findall('Vertex')
                 verts=[(x.attrib['X'], x.attrib['Y']) for x in verts]
-                l_dict[i]=[(int(float(x)),int(float(y))) for x,y in verts]
-                annotations[l]=l_dict
-        return annotations
-
-
-    def _json_file(self):
+                region_dict[i]=[(int(float(x)),int(float(y))) for x,y in verts]
+            annotations[l]=region_dict 
         
-        with open(self.paths) as json_file:
-            json_annotations=json.load(json_file)
-
-        annotations = {labels[k]: [[[int(i['x']), int(i['y'])] for i in v2] for
-                       k2, v2 in v.items()]for k, v in json_annotations.items()}
+        annotations = {self.class_key[k]: list(v.values()) for k,v in annotations.items()}
+        self._annotations=annotations
         return annotations
 
+
+    def _json(self):
+        
+        with open(self.path) as json_file:
+            json_annotations=json.load(json_file)
+        
+        if self.labels is None:
+            self.labels=list(json_annotations.keys())
+
+        annotations = {self.class_key[k]: [[int(i['x']), int(i['y'])] for i in v2] 
+                       for k, v in json_annotations.items() for v2 in v.values()}
+
+        self._annotations=annotations
+        return annotations
 
 
     def _dataframe(self):
@@ -222,4 +255,20 @@ class Annotations():
 
     def _csv(self):
         pass
+
+
+    def df(self):
+        
+        key={v:k for k,v in self.class_key.items()}
+        labels=[[l]*len(self._annotations[l]) for l in self._annotations.keys()]
+        labels=chain(*labels)
+        labels=[key[l] for l in labels]
+        x_values=[xi[0] for x in list(self._annotations.values()) for xi in x]  
+        y_values=[yi[1] for y in list(self._annotations.values()) for yi in y]
+        print(len(labels),len(x_values),len(y_values))
+        df=pd.DataFrame({'labels':labels,'x':x_values,'y':y_values})
+
+        return df
+
+
 
