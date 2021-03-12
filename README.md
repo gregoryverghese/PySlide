@@ -7,11 +7,7 @@
   </a>
 
   <h3 align="center">PySlide</h3>
-  
-  <p align="center">UNDER DEVELOPMENT</p>
-
-  <p align="center">
-    An awesome histopathology whole slide image processing library!
+ 
     <br />
 </a>
     <br />
