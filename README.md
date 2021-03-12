@@ -8,7 +8,7 @@
 
   <h3 align="center">PySlide</h3>
  
-    <br />
+
 </a>
     <br />
     <br />
@@ -69,14 +69,14 @@ Clone the repo
 * comment code
 
 <!-- LICENSE -->
-## License
+### License
 
-Distributed under vi pre  the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License
 
 
 
 <!-- CONTACT -->
-## Contact
+### Contact
 
 gregory.verghese@gmail.com
 
