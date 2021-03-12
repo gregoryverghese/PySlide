@@ -15,8 +15,6 @@
   </p>
 </p>
 
-
-
 This is a library for preprocessing histological whole slide images (WSIs) and wraps around the OpenSlide package to extend the functionality on offer. The advent of Digital WSIs scanners have facilitated the use of computational methods in pathological research but due to the high resolution nature of WSIs they often have large storage requirements which can be a burden in the application of numerically demanding algorithms.  
 
 Openslide provides a nice framework to work with WSIs and provides a python API. This package will provide a richer set of functions on top of OpenSlide for general preprocessing. At the core we work by patching up the WSIs into smaller tiles. This is the beginnings of a comprehensive framework to work and manipulate WSIs particularly with a focus on machine learning.  
