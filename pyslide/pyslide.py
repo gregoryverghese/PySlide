@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 '''
 pyslide.py
@@ -231,6 +230,7 @@ class Annotations():
         
         annotations = {self.class_key[k]: list(v.values()) for k,v in annotations.items()}
         self._annotations=annotations
+
         return annotations
 
 
@@ -265,7 +265,6 @@ class Annotations():
         labels=[key[l] for l in labels]
         x_values=[xi[0] for x in list(self._annotations.values()) for xi in x]  
         y_values=[yi[1] for y in list(self._annotations.values()) for yi in y]
-        print(len(labels),len(x_values),len(y_values))
         df=pd.DataFrame({'labels':labels,'x':x_values,'y':y_values})
 
         return df
