@@ -1,5 +1,10 @@
 #!usr/bin/env python3
 
+"""
+patching.py: contains Patching class for splitting WSIs
+into a set of smaller tiles based on annotations
+"""
+
 import os
 
 import numpy as np
@@ -9,6 +14,9 @@ import seaborn as sns
 from matplotlib.path import Path
 
 from PySlide.pyslide import Slide
+
+__author__='Gregory Verghese'
+__email__='gregory.verghese@gmail.com'
 
 
 class Patching():
