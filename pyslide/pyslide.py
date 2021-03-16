@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 '''
-pyslide.py
+pyslide.py: contains class Slide wrapped around openslide.Openslide to
+load and annotate the whole slide images. Contains annotations class to
+load annotations from json or xml format
 '''
+
 import sys
 import os
 import json
@@ -15,13 +18,30 @@ from openslide import OpenSlide
 from itertools import chain
 import operator as op
 
+__author__=='Gregory Verghese'
+__email__=='gregory.verghese@gmail.com'
+
 
 class Slide(OpenSlide):
+    """
+    WSI object that enables annotation overlay
+
+    wrapper around openslide.OpenSlide class loads WSIs 
+    and provides additional functionality to generate 
+    masks and mark with user loaded annotations
+
+    Attributes:
+        _slide_mask: ndarray mask representation
+        dims: dimensions of WSI
+        name: string name
+        draw_border: boolean to generate border based on annotations
+        _border: list of border coordinates [(x1,y1),(x2,y2)] 
+    """
 
     MAG_fACTORS={0:1,1:2,3:4,4:16,5:32}
 
-    def __init__(self, filename, border,annotations=None,
-                 annotations_path=None):
+    def __init__(self, filename, draw_border=False, 
+                 annotations=None, annotations_path=None):
         super().__init__(filename)
         
         if annotations_path is not None:
@@ -33,42 +53,42 @@ class Slide(OpenSlide):
         self._slide_mask=None
         self.dims = self.dimensions
         self.name = os.path.basename(filename)[:-4]
-
-        if border=='draw':
-            self._border=self.draw_border()
-        elif border=='fullsize':
-            self._border=[[0,self.dims[0]],[0,self.dims[1]]]
+        self.draw_border=draw_border
+        self._border=None
 
     @property
     def border(self):
         return self._border
 
+    @border.setter
+    def border(self,value):
+        #Todo: if two values we treat as max_x and max_y
+        assert(len(value)==4)
 
-    @border.setter 
-    def border(self, value):
+    @draw_border.setter 
+    def draw_border(self, value):
         
-        if value=='draw':
-            self._border = self.draw_border()
-        elif value=='fullsize':
-            self._border = [[0,self.dims[0]],[0,self.dims[1]]]
+        if value:
+            self._border=self.draw_border()
+            self.draw_border=value
+        elif not value:
+            self._border=[[0,self.dims[0]],[0,self.dims[1]]]
+            self.draw_border=value
         else:
-            pass
-            #TODO need to raise an exception
+            raise TypeError('Boolean type required')
         
     
-    def oneHotToMask(onehot):
-
-        nClasses =  onehot.shape[-1]
-        idx = tf.argmax(onehot, axis=-1)
-        colors = sns.color_palette('hls', nClasses)
-        multimask = tf.gather(colors, idx)
-        multimask = np.where(multimask[:,:,:]==colors[0], 0, multimask[:,:,:])
-
-        return multimask
-
-
     def slide_mask(self, size=None):
-        
+       """
+       generates mask representation of annotations
+
+       Args:
+           size: tuple of size dimensions for mask
+       Returns:
+           self._slide_mask: ndarray mask
+
+        """
+
         x, y = self.dims[0], self.dims[1]
         slide_mask=np.zeros((y, x, 3), dtype=np.uint8)
         
@@ -87,6 +107,15 @@ class Slide(OpenSlide):
 
     @staticmethod 
     def generate_annotations(labels,path,file_type):
+        """
+        generate annotations object based on json or xml
+        
+        Args:
+            path: path to json or xml annotation files
+            file_type: xml or json
+        Returns:
+            self.annotations: dictionary of annotation coordinates
+        """
 
         annotations_obj=Annotations(path, file_type)
         self.annotations = annotations.generate_annotations(labels)
@@ -96,7 +125,21 @@ class Slide(OpenSlide):
 
     @staticmethod   
     def resize_border(dim, factor=1, threshold=None, operator='=>'):
-       
+        """
+        resize and redraw annotations border - useful to cut out 
+        specific size of WSI and mask
+
+        Args:
+            dim: dimensions
+            factor: border increments
+            threshold: min/max size
+            operator: threshold limit 
+
+        Returns:
+            new_dims: new border dimensions [(x1,y1),(x2,y2)]
+
+        """
+
         if threshold is None:
             threshold=dim
 
@@ -113,6 +156,14 @@ class Slide(OpenSlide):
     #TODO: function will change with format of annotations
     #data structure accepeted
     def draw_border(self, space=100):
+        """
+        generate border around annotations on WSI
+
+        Args:
+            space: border space
+        Returns: 
+            self._border: border dimensions [(x1,y1),(x2,y2)]
+        """
 
         coordinates = list(chain(*[self.annotations[a] for a in 
                                    self.annotations]))
@@ -124,8 +175,7 @@ class Slide(OpenSlide):
 
 
     def generate_region(self, mag=0, x=None, y=None,  x_size=None, y_size=None,
-                        scale_border=False, factor=1, threshold=None,
-                        operator='=>'):
+                        scale_border=False, factor=1, threshold=None, operator='=>'):
 
         if x is None:
             self.draw_border()
@@ -193,6 +243,8 @@ class Annotations():
             annotations=self._json()
         elif self.path.endswith('xml'):
             annotations=self._xml()
+        else:
+            raise ValueError('requires xml or json file')
         
         if self.labels is not None:
             #annotations=self.filter_labels(annotations)
