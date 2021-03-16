@@ -18,6 +18,7 @@ from openslide import OpenSlide
 from itertools import chain
 import operator as op
 
+
 __author__=='Gregory Verghese'
 __email__=='gregory.verghese@gmail.com'
 
@@ -174,8 +175,26 @@ class Slide(OpenSlide):
         return self._border
 
 
-    def generate_region(self, mag=0, x=None, y=None,  x_size=None, y_size=None,
+    def generate_region(self, mag=0, x=None, y=None, x_size=None, y_size=None, 
                         scale_border=False, factor=1, threshold=None, operator='=>'):
+        """
+        extracts specific regions of the slide
+
+        Args:
+            mag: magnfication level 1-8
+            x: 
+            y:
+            x_size: x dim size
+            y_size: y dim size
+            scale_border: resize border
+            factor: increment for resizing border
+            threshold: limit for resizing border
+            operator: operator for threshold
+        Returns:
+            region: ndarray image of extracted region
+            mask: ndarray mask of annotations in region
+
+        """
 
         if x is None:
             self.draw_border()
@@ -206,6 +225,13 @@ class Slide(OpenSlide):
 
     
     def save(self, path, size=(2000,2000), mask=False):
+        """
+        save thumbnail of slide in image file format
+        Args:
+            path:
+            size:
+            mask:
+        """
 
         if mask:
             cv2.imwrite(path,self._slide_mask)
@@ -214,6 +240,8 @@ class Slide(OpenSlide):
             image = image.convert('RGB')
             image = np.array(image)
             cv2.imwrite(path,image)
+
+
 
 
 
