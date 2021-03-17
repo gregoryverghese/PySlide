@@ -19,8 +19,8 @@ from itertools import chain
 import operator as op
 
 
-__author__=='Gregory Verghese'
-__email__=='gregory.verghese@gmail.com'
+#__author__=='Gregory Verghese'
+#__email__=='gregory.verghese@gmail.com'
 
 
 class Slide(OpenSlide):
@@ -66,6 +66,10 @@ class Slide(OpenSlide):
         #Todo: if two values we treat as max_x and max_y
         assert(len(value)==4)
 
+    @property
+    def draw_border():
+        return self.draw_border
+
     @draw_border.setter 
     def draw_border(self, value):
         
@@ -80,13 +84,13 @@ class Slide(OpenSlide):
         
     
     def slide_mask(self, size=None):
-       """
-       generates mask representation of annotations
+        """
+        generates mask representation of annotations
 
-       Args:
-           size: tuple of size dimensions for mask
-       Returns:
-           self._slide_mask: ndarray mask
+        Args:
+            size: tuple of size dimensions for mask
+        Returns:
+            self._slide_mask: ndarray mask
 
         """
 
@@ -246,6 +250,21 @@ class Slide(OpenSlide):
 
 
 class Annotations():
+
+    """
+    returns dictionary of coordinates of ROIs
+    
+    reads annotation files in either xml and json format
+    and returns a dictionary containing x,y coordinates
+    for each region of interest in the annotation
+
+    Attributes:
+        path: string path to annotation file
+        annotation_type: file type
+        labels: list of ROI names ['roi1',roi2']
+        _annotations: dictonary with return files
+                      {roi1:[[x1,y1],[x2,y2],...[xn,yn],...roim:[]}
+    """
     def __init__(self, path, annotation_type=None,labels=None):
         self.path=path 
         self.annotation_type = annotation_type
@@ -260,8 +279,12 @@ class Annotations():
         return class_key
 
 
-
     def generate_annotations(self):
+        """
+        calls appropriate method for file type
+        Returns:
+            annotations: dictionary of coordinates
+        """
 
         if self.annotation_type in ['imagej','xml']:
             annotations=self._xml()
@@ -281,17 +304,29 @@ class Annotations():
         return annotations
 
 
-    def filter_labels(self,annotations):
+    def filter_labels(self):
+        """
+        remove labels from annotations
+        
+        Returns:
+            annotations: filtered dict of coordinates
+        """
 
-        keys = list(annotations.keys())
+        keys = list(self.annotations.keys())
         for k in keys:
             if k not in self.labels:
-                del annotations[k]
-        return annotations       
+                del self.annotations[k]
+        return self.annotations       
 
 
-    def _xml(self):
-        
+    def _imageJ(self):
+        """
+        parses xml files
+
+        Returns:
+            annotations: dict of coordinates
+        """
+
         tree=ET.parse(self.path)
         root=tree.getroot()
         regions = {n.attrib['Name']: n[1].findall('Region') for n in root}
@@ -314,8 +349,18 @@ class Annotations():
         return annotations
 
 
+    def _asap():
+        pass
+
+
     def _json(self):
-        
+        """
+        parses json file
+
+        Returns:
+            annotations: dict of coordinates
+        """
+
         with open(self.path) as json_file:
             json_annotations=json.load(json_file)
         
@@ -338,7 +383,10 @@ class Annotations():
 
 
     def df(self):
-        
+        """
+        returns dataframe of annotations
+
+        """
         key={v:k for k,v in self.class_key.items()}
         labels=[[l]*len(self._annotations[l]) for l in self._annotations.keys()]
         labels=chain(*labels)
@@ -348,6 +396,15 @@ class Annotations():
         df=pd.DataFrame({'labels':labels,'x':x_values,'y':y_values})
 
         return df
+
+
+    def save(self,save_path):
+        """
+        save down annotations in csv file
+        Args:
+            save_path:string save path
+        """
+        self.df().to_csv(save_path)
 
 
 
