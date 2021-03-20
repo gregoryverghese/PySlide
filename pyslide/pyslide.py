@@ -349,9 +349,23 @@ class Annotations():
         return annotations
 
 
-    def _asap():
-        pass
+    def _asap(self):
 
+        tree=ET.parse(path)
+        root=tree.getroot()
+        ns=root[0].findall('Annotation')
+        labels=list(root.iter('Annotation'))
+        labels=list(set([i.attrib['PartOfGroup'] for i in labels]))
+        annotations={l:[] for l in labels}
+        for i in ns:
+            coordinates=list(i.iter('Coordinate'))
+            coordinates=[(float(c.attrib['X']),float(c.attrib['Y'])) for c in coordinates]
+            coordinates=[(round(c[0]),round(c[1])) for c in coordinates]
+            label=i.attrib['PartOfGroup']
+            annotations[label]=annotations[label]+coordinates
+        self._annotations=annotations
+        return annotations
+            
 
     def _json(self):
         """
