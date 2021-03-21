@@ -246,9 +246,6 @@ class Slide(OpenSlide):
             cv2.imwrite(path,image)
 
 
-
-
-
 class Annotations():
 
     """
@@ -293,7 +290,9 @@ class Annotations():
         elif self.path.endswith('json'):
             annotations=self._json()
         elif self.path.endswith('xml'):
-            annotations=self._xml()
+            annotations=self._imageJ()
+        elif self.path.endswith('csv'):
+            annotations=self._csv()
         else:
             raise ValueError('requires xml or json file')
         
@@ -329,23 +328,18 @@ class Annotations():
 
         tree=ET.parse(self.path)
         root=tree.getroot()
-        regions = {n.attrib['Name']: n[1].findall('Region') for n in root}
-
-        if self.labels is None:
-            self.labels=list(regions.keys())
-        
-        annotations={}
-        for l in regions:
-            region_dict={}
-            for i,c in enumerate(regions[l]):
-                verts=c[1].findall('Vertex')
-                verts=[(x.attrib['X'], x.attrib['Y']) for x in verts]
-                region_dict[i]=[(int(float(x)),int(float(y))) for x,y in verts]
-            annotations[l]=region_dict 
-        
-        annotations = {self.class_key[k]: list(v.values()) for k,v in annotations.items()}
+        anns=root.findall('Annotation')
+        labels=list(root.iter('Annotation'))
+        self.labels=list(set([i.attrib['Name'] for i in labels]))
+        annotations={l:[] for l in self.labels}
+        for i in anns:
+            label=i.attrib['Name']
+            coordinates=list(i.iter('Vertex'))
+            coordinates=[(c.attrib['X'],c.attrib['Y']) for c in coordinates]
+            coordinates=[(round(float(c[0])),round(float(c[1]))) for c in coordinates]
+            annotations[label]=annotations[label]+coordinates
+        annotations = {self.class_key[k]: v for k,v in annotations.items()}
         self._annotations=annotations
-
         return annotations
 
 
@@ -363,6 +357,8 @@ class Annotations():
             coordinates=[(round(c[0]),round(c[1])) for c in coordinates]
             label=i.attrib['PartOfGroup']
             annotations[label]=annotations[label]+coordinates
+
+        annotations = {class_key[k]: v for k,v in annotations.items()}
         self._annotations=annotations
         return annotations
             
@@ -393,8 +389,17 @@ class Annotations():
 
 
     def _csv(self):
-        pass
+        anns_df=pd.read_csv(self.path)
+        anns_df.fillna('undefined', inplace=True)
+        anns_df.set_index('labels',drop=True,inplace=True)
+        self.labels=list(set(anns_df.index))
+        annotations={l: list(zip(anns_df.loc[l].x,anns_df.loc[l].y)) for l in
+                     self.labels}
 
+        annotations = {self.class_key[k]: v for k,v in annotations.items()}
+        self._annotations=annotations
+        return annotations
+        
 
     def df(self):
         """
