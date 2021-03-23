@@ -13,7 +13,7 @@ import cv2
 import seaborn as sns
 from matplotlib.path import Path
 
-from PySlide.pyslide import Slide
+from pyslide.slide import Slide
 
 __author__='Gregory Verghese'
 __email__='gregory.verghese@gmail.com'

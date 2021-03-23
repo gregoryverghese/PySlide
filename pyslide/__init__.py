@@ -1,6 +1,6 @@
-from PySlide.pyslide import Slide, Annotations
-from PySlide.patching import Patching
+from pyslide.slide import Slide, Annotations
+from pyslide.patching import Patching
 
-from PySlide import pyslide
+from pyslide import slide
 
 
