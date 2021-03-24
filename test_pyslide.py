@@ -13,18 +13,22 @@ class TestSlide():
 
 
 class TestAnnotations(unittest.TestCase):
-   
+
     @classmethod
     def setUpClass(cls):
-        cls.ann_obj=Annotations('data/annotations/imagej_annotations.xml')
+        cls.imagej_path='data/annotations/imagej_annotations.xml'
+        cls.asap_path='data/annotations/asap_annotations.xml'
+        cls.json_path='data/annotations/json_path.json'
+        cls.ann_obj=Annotations
 
 
-    def test__imageJ(self):
-        annotations=self.ann_obj._imageJ()
+    def test_imageJ(self):
+        annotations=self.ann_obj(self.imagej_path)._imageJ()
+        self.assertEqual(list(annotations.keys()),[0,1,2,3,4])
         self.assertTrue(len(annotations),5)
         
 
-    def test__asap(self):
+    def test_asap(self):
         pass
 
 
@@ -38,5 +42,6 @@ class TestAnnotations(unittest.TestCase):
 
 if __name__=='__main__':
     unittest.main()
+
 
 
