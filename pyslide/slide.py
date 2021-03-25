@@ -74,11 +74,11 @@ class Slide(OpenSlide):
     def draw_border(self, value):
         
         if value:
-            self._border=self.draw_border()
-            self.draw_border=value
+            self._border=self.get_border()
+            #self.draw_border=value
         elif not value:
             self._border=[[0,self.dims[0]],[0,self.dims[1]]]
-            self.draw_border=value
+            #self.draw_border=value
         else:
             raise TypeError('Boolean type required')
         
@@ -160,7 +160,7 @@ class Slide(OpenSlide):
 
     #TODO: function will change with format of annotations
     #data structure accepeted
-    def draw_border(self, space=100):
+    def get_border(self, space=100):
         """
         generate border around annotations on WSI
 
@@ -177,6 +177,34 @@ class Slide(OpenSlide):
         self._border=list(map(f, list(zip(*coordinates))))
 
         return self._border
+
+
+    def detect_component(self,down_factor=10):
+
+        f = lambda x: round(x/100)
+        new_dims=list(map(f,self.dims))
+        image=np.array(self.get_thumbnail(new_dims))
+
+        gray=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+        blur=cv2.bilateralFilter(np.bitwise_not(gray),9,100,100)
+        _,thresh=cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        contours,_=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+
+        c = max(contours, key = cv2.contourArea)
+        x,y,w,h = cv2.boundingRect(c)
+
+        x_scale=self.dims[0]/new_dims[0]
+        y_scale=self.dims[1]/new_dims[1]
+
+        x1=round(x_scale*x)
+        x2=round(x_scale*(x+w))
+        y1=round(y_scale*y)
+        y2=round(y_scale*(y+h))
+
+        self._border=[(x1,x2),(y1,y2)]
+        image=cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
+
+        return image, self._border
 
 
     def generate_region(self, mag=0, x=None, y=None, x_size=None, y_size=None, 
