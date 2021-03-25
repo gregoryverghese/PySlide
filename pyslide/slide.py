@@ -262,9 +262,9 @@ class Annotations():
         _annotations: dictonary with return files
                       {roi1:[[x1,y1],[x2,y2],...[xn,yn],...roim:[]}
     """
-    def __init__(self, path, annotation_type=None,labels=None):
+    def __init__(self, path, source=None,labels=None):
         self.path=path 
-        self.annotation_type = annotation_type
+        self.source=source
         self.labels = labels
         self._annotations=None
 
@@ -282,19 +282,19 @@ class Annotations():
         Returns:
             annotations: dictionary of coordinates
         """
-
-        if self.annotation_type in ['imagej','xml']:
-            annotations=self._xml()
-        elif self.annotation_type=='json':
-            annotations=self._json()
+        
+        if self.source=='imagej':
+            annotations=self._imagej()
+        elif self.source=='asap':
+            annotations=self._asap()
+        elif self.source=='csv':
+            annotations=self._csv()
         elif self.path.endswith('json'):
             annotations=self._json()
-        elif self.path.endswith('xml'):
-            annotations=self._imageJ()
         elif self.path.endswith('csv'):
             annotations=self._csv()
         else:
-            raise ValueError('requires xml or json file')
+            raise ValueError('provide source or valid filetype')
         
         if self.labels is not None:
             #annotations=self.filter_labels(annotations)
@@ -318,7 +318,7 @@ class Annotations():
         return self.annotations       
 
 
-    def _imageJ(self):
+    def _imagej(self):
         """
         parses xml files
 
@@ -345,12 +345,13 @@ class Annotations():
 
     def _asap(self):
 
-        tree=ET.parse(path)
+        tree=ET.parse(self.path)
         root=tree.getroot()
         ns=root[0].findall('Annotation')
         labels=list(root.iter('Annotation'))
-        labels=list(set([i.attrib['PartOfGroup'] for i in labels]))
-        annotations={l:[] for l in labels}
+        self.labels=list(set([i.attrib['PartOfGroup'] for i in labels]))
+        print(self.labels)
+        annotations={l:[] for l in self.labels}
         for i in ns:
             coordinates=list(i.iter('Coordinate'))
             coordinates=[(float(c.attrib['X']),float(c.attrib['Y'])) for c in coordinates]
@@ -358,7 +359,7 @@ class Annotations():
             label=i.attrib['PartOfGroup']
             annotations[label]=annotations[label]+coordinates
 
-        annotations = {class_key[k]: v for k,v in annotations.items()}
+        annotations = {self.class_key[k]: v for k,v in annotations.items()}
         self._annotations=annotations
         return annotations
             
