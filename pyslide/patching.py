@@ -178,11 +178,14 @@ class Patching():
             yield mask,m['x'],m['y']
 
 
-    #TODO: how to save individiual patch and mask
+        #TODO: how to save individiual patch and mask
     @staticmethod
     def saveimage(image,path,filename,x=None,y=None):
-        if (x and not y) or (not x and y):
-            raise ValueError('missing value for x or y')
+
+        if y is None and x is not None:
+            raise ValueError('missing y')
+        elif x is None and y is not None:
+            raise ValueError('missing x')
         elif (x and y) is None:
             image_path=os.path.join(path,filename)
         elif (x and y) is not None:
@@ -190,26 +193,40 @@ class Patching():
              image_path=os.path.join(path,filename)
         status=cv2.imwrite(image_path,image)
         return status
-    
+   
 
     #TODO fix masks. Currently saving only first mask over and over
     def save(self, path, mask_flag=False):
-        
+    
         patchpath=os.path.join(path,'images')
         try:
             os.mkdir(patchpath)
         except OSError as error:
             print(error)
+    
+        if mask_flag:
+            maskpath=os.path.join(path,'masks')
+            try:
+                os.mkdir(os.path.join(maskpath))
+            except OSError as error:
+                print(error)
 
-        maskpath=os.path.join(path,'masks')
-        try:
-            os.mkdir(os.path.join(maskpath))
-        except OSError as error:
-            print(error)
-        masks_generator=self.extract_masks()
+            masks_generator=self.extract_masks()
         for patch,x,y in self.extract_patches(): 
             patchstatus=self.saveimage(patch,patchpath,self.slide.name,x,y)
-            if mask_flag:
-                
+            if mask_flag:    
                 mask,x,y=next(mask_generator)
                 maskstatus=self.saveimage(mask,maskpath,self.slide.name,x,y)
+
+
+
+
+
+
+
+
+
+
+
+
+
