@@ -72,7 +72,6 @@ class Slide(OpenSlide):
 
     @draw_border.setter 
     def draw_border(self, value):
-        
         if value:
             self._border=self.get_border()
             #self.draw_border=value
@@ -93,25 +92,22 @@ class Slide(OpenSlide):
             self._slide_mask: ndarray mask
 
         """
-
         x, y = self.dims[0], self.dims[1]
-        slide_mask=np.zeros((y, x, 3), dtype=np.uint8)
-        
+        slide_mask=np.zeros((y, x, 3), dtype=np.uint8)        
         for k in self.annotations:
             v = self.annotations[k]
             v = [np.array(a) for a in v]
+           print(slide_mask.shape)
             cv2.fillPoly(slide_mask, v, color=k)
 
         if size is not None:
             slide_mask=cv2.resize(slide_mask, size)
              
         self._slide_mask=slide_mask
-        
         return self._slide_mask
 
 
-    @staticmethod 
-    def generate_annotations(labels,path,file_type):
+    def generate_annotations(self,path):
         """
         generate annotations object based on json or xml
         
@@ -122,8 +118,8 @@ class Slide(OpenSlide):
             self.annotations: dictionary of annotation coordinates
         """
 
-        annotations_obj=Annotations(path, file_type)
-        self.annotations = annotations.generate_annotations(labels)
+        ann_obj=Annotations(path)
+        self.annotations = ann_obj.generate_annotations()
 
         return self.annotations
 
