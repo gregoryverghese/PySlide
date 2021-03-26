@@ -5,14 +5,57 @@ import xml.etree.ElementTree as ET
 import unittest
 import numpy as np
 
-from pyslide.slide import Annotations
+from pyslide.slide import Annotations, Slide
 
 
-class TestSlide():
-    pass
+class TestSlide(unittest.TestCase):
+    
+    @classmethod
+    def setUpClass(cls):
+        cls.ndpi_path='14.90610 C L2.11.ndpi'
+        cls.json_path='14.90610 C L2.11.json'
+        ann_obj=Annotations(cls.json_path)
+        cls.annotations=ann_obj.generate_annotations()
+        cls.slide_obj=Slide(cls.ndpi_path,annotations=cls.annotations)
 
 
-class TestAnnotations(unittest.TestCase):
+    def test_slide_mask(self):
+        mask=self.slide_obj.slide_mask((2000,2000))
+        self.assertEqual(mask.shape,(2000,2000))
+        labels=np.unique(mask)
+        self.assertEqual(len(labels),3)
+
+
+    def test_generate_annotations(self):
+        annotations=self.slide_obj.generate_annotations(self.json_path)
+        self.assertEqual(len(annotations),3)
+        self.assertEqual(set(annotations.keys()),{0,1,2})
+
+        num_anns={len(annotations[k]) for k in annotations.keys()}
+        self.assertEqual(num_anns,{243, 387, 515})
+
+
+    def test_resize_border(self):
+        pass
+
+
+    def test_draw_border(self):
+        pass
+
+
+    def test_get_border(self):
+        pass
+
+
+    def test_detect_components(self):
+        pass
+
+
+    def test_generate_region(self):
+        pass
+
+'''
+class Annotations(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -59,6 +102,7 @@ class TestAnnotations(unittest.TestCase):
         sizes={len(annotations[a]) for a in annotations}
         self.assertEqual(sizes,{11538, 4, 6721, 2002, 7129})
 
+'''
 
 if __name__=='__main__':
     unittest.main()
