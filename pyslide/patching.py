@@ -71,31 +71,53 @@ class Patching():
 
     @staticmethod
     def patching(step,xmin,xmax,ymin,ymax):
-
         for x in range(xmin,xmax, step):
             for y in range(ymin,ymax,step):
                 yield x, y
 
 
-    #TODO discard patches at borders that do not match size
-    def generate_patches(self,step, mode='sparse'):
-        #DO we leave the step multiplier here
-        step=step*self.mag_factor
-        xmin, xmax = self.slide.border[0][0], self.slide.border[0][1]
-        ymin, ymax = self.slide.border[1][0], self.slide.border[1][1]
-        for x, y in self.patching(step,xmin,xmax,ymin,ymax):
+    def _remove_edge_cases(self,x,y,xmin,xmax,ymin,ymax):
+        x_size=int(self.size[0]*self.mag_factor*.5)
+        y_size=int(self.size[1]*self.mag_factor*.5)
+        xmin=self.slide.border[0][0]
+        xmax=self.slide.border[0][1]
+        ymin=self.slide.border[1][0]
+        ymax=self.slide.border[1][1]
+        remove=False
 
-            self.patches.append({'x':x,'y':y})
-            mask = self.slide._slide_mask[y:y+self.size[0],x:x+self.size[1]]
-           
-            #TODO:Do we store that mask class info
-            #expensive operation but clearly useful
-            if mode=='focus':
-                classes = len(np.unique(mask))
-                self._masks.append({'x':x, 'y':y, 'classes':classes})
-                self.focus()
-            else:
-                self._masks.append({'x':x, 'y':y})
+        if x+x_size>xmax:
+            remove=True
+        if x-x_size<xmin:
+            remove=True
+        if y+y_size>ymax:
+            remove=True
+        if y-y_size<ymin:
+            remove=True
+        return remove
+
+
+    def generate_patches(self,step, mode='sparse',mask_flag=False):
+        self._patches=[]
+        self._masks=[]
+        step=step*self.mag_factor
+        xmin=self.slide.border[0][0]
+        xmax=self.slide.border[0][1]
+        ymin=self.slide.border[1][0]
+        ymax=self.slide.border[1][1]
+
+        for x, y in self.patching(step,xmin,xmax,ymin,ymax):
+            name=self.slide.name+'_'+str(x)+'_'+str(y)
+            if self._remove_edge_cases(x,y):
+                continue
+            self.patches.append({'name':name,'x':x,'y':y})
+            if mask_flag:
+                mask=self.slide._slide_mask[y:y+self.size[0],x:x+self.size[1]]
+                if mode == 'focus':
+                    classes = len(np.unique(mask))
+                    self._masks.append({'x':x, 'y':y, 'classes':classes})
+                    self.focus()
+                else:
+                    self._masks.append({'x':x, 'y':y})
 
         self._number=len(self._patches)
         return self._number
