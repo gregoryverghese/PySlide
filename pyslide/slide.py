@@ -141,7 +141,6 @@ class Slide(OpenSlide):
             new_dims: new border dimensions [(x1,y1),(x2,y2)]
 
         """
-
         if threshold is None:
             threshold=dim
 
@@ -157,7 +156,7 @@ class Slide(OpenSlide):
 
     #TODO: function will change with format of annotations
     #data structure accepeted
-    def get_border(self, space=100):
+    def get_border(self,space=100):
         """
         generate border around annotations on WSI
 
@@ -182,6 +181,7 @@ class Slide(OpenSlide):
         new_dims=list(map(f,self.dims))
         image=np.array(self.get_thumbnail(new_dims))
 
+        print(new_dims)
         gray=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
         blur=cv2.bilateralFilter(np.bitwise_not(gray),9,100,100)
         _,thresh=cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
@@ -189,6 +189,8 @@ class Slide(OpenSlide):
 
         c = max(contours, key = cv2.contourArea)
         x,y,w,h = cv2.boundingRect(c)
+        
+        print(x,y,w,h)
 
         x_scale=self.dims[0]/new_dims[0]
         y_scale=self.dims[1]/new_dims[1]
@@ -197,7 +199,8 @@ class Slide(OpenSlide):
         x2=round(x_scale*(x+w))
         y1=round(y_scale*y)
         y2=round(y_scale*(y+h))
-
+        
+        print(x1,x2,y1,y2)
         self._border=[(x1,x2),(y1,y2)]
         image=cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
 
@@ -224,33 +227,26 @@ class Slide(OpenSlide):
             mask: ndarray mask of annotations in region
 
         """
-
         if x is None:
-            self.draw_border()
+            self.get_border()
             x, y = self.border
         
         x_min, x_max=x
         y_min, y_max=y
-
         x_size=x_max-x_min
         y_size=y_max-y_min
-
-        #Adjust sizes - treating 0 as base
-        #256 size in mag 0 is 512 in mag 1
         x_size=int(x_size/Slide.MAG_fACTORS[mag])
-        y_size=int(y_size/Slide.MAG_fACTORS[mag])
-        
+        y_size=int(y_size/Slide.MAG_fACTORS[mag])  
         if scale_border:
             x_size = Slide.resize_border(x_size, factor, threshold, operator)
             y_size = Slide.resize_border(y_size, factor, threshold, operator)
         
         print('x_size:{}'.format(x_size))
         print('y_size:{}'.format(y_size))
-
         region=self.read_region((x_min,y_min),mag,(x_size, y_size))
         mask=self.slide_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
 
-        return region, mask
+        return np.array(region.convert('RGB')), mask
 
     
     def save(self, path, size=(2000,2000), mask=False):

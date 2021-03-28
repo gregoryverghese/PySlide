@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 
 import unittest
 import numpy as np
+from itertools import chain
 
 from pyslide.slide import Annotations, Slide
 
@@ -14,10 +15,12 @@ class TestSlide(unittest.TestCase):
     def setUpClass(cls):
         cls.ndpi_path='14.90610 C L2.11.ndpi'
         cls.json_path='14.90610 C L2.11.json'
-        ann_obj=Annotations(cls.json_path)
-        cls.annotations=ann_obj.generate_annotations()
-        cls.slide_obj=Slide(cls.ndpi_path,annotations=cls.annotations)
 
+    def setUp(self):
+        ann_obj=Annotations(self.json_path)
+        self.annotations=ann_obj.generate_annotations()
+        self.slide_obj=Slide(self.ndpi_path,annotations=self.annotations)
+        
 
     def test_slide_mask(self):
         mask=self.slide_obj.slide_mask((2000,2000))
@@ -26,7 +29,7 @@ class TestSlide(unittest.TestCase):
         self.assertEqual(len(labels),2)
         self.assertEqual(set(labels),{0,255})
 
-
+    
     def test_generate_annotations(self):
         annotations=self.slide_obj.generate_annotations(self.json_path)
         self.assertEqual(len(annotations),3)
@@ -37,23 +40,34 @@ class TestSlide(unittest.TestCase):
 
 
     def test_resize_border(self):
-        pass
-
-
-    def test_draw_border(self):
-        pass
-
+        
+        _,border=self.slide_obj.detect_component()
+        new_dims=[self.slide_obj.resize_border(b,512) for b in chain(*self.slide_obj.border)]
+        #why in jupyter notebook 7168
+        self.assertEqual(new_dims,[7680, 21504, 16384, 29184])
+    
 
     def test_get_border(self):
-        pass
-
+        border1=self.slide_obj.get_border()
+        self.assertEqual(border1,[(7689, 20172), (16026, 29254)])
+        border2=self.slide_obj.get_border(space=200)
+        self.assertEqual(border2,[(7589, 20272), (15926, 29354)])
+        
 
     def test_detect_components(self):
-        pass
+        image,border=self.slide_obj.detect_component() 
+        #Check why 519 in jupyter notebook
+        self.assertEqual(image.shape,(520, 983, 3))
+        #Check why 7100 in jupyter notebook
+        self.assertEqual(border,[(7200, 21001), (15890, 29182)])
 
 
     def test_generate_region(self):
-        pass
+
+        region,mask=self.slide_obj.generate_region()
+        self.assertEqual(region.shape,(13228, 12483, 3))
+        self.assertEqual(list(np.unique(mask)),[0,255])
+        
 
 '''
 class Annotations(unittest.TestCase):
