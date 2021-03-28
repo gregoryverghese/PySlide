@@ -21,9 +21,10 @@ class TestSlide(unittest.TestCase):
 
     def test_slide_mask(self):
         mask=self.slide_obj.slide_mask((2000,2000))
-        self.assertEqual(mask.shape,(2000,2000))
+        self.assertEqual(mask.shape,(2000,2000,3))
         labels=np.unique(mask)
-        self.assertEqual(len(labels),3)
+        self.assertEqual(len(labels),2)
+        self.assertEqual(set(labels),{0,255})
 
 
     def test_generate_annotations(self):
@@ -32,7 +33,7 @@ class TestSlide(unittest.TestCase):
         self.assertEqual(set(annotations.keys()),{0,1,2})
 
         num_anns={len(annotations[k]) for k in annotations.keys()}
-        self.assertEqual(num_anns,{243, 387, 515})
+        self.assertEqual(num_anns,{13, 21, 14})
 
 
     def test_resize_border(self):

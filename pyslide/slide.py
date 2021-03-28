@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from openslide import OpenSlide
 from itertools import chain
 import operator as op
@@ -92,18 +93,18 @@ class Slide(OpenSlide):
             self._slide_mask: ndarray mask
 
         """
+        colors=sns.color_palette('hls',len(self.annotations))
         x, y = self.dims[0], self.dims[1]
         slide_mask=np.zeros((y, x, 3), dtype=np.uint8)        
         for k in self.annotations:
             v = self.annotations[k]
             v = [np.array(a) for a in v]
-           print(slide_mask.shape)
-            cv2.fillPoly(slide_mask, v, color=k)
+            cv2.fillPoly(slide_mask, v, color=colors[k])
 
         if size is not None:
             slide_mask=cv2.resize(slide_mask, size)
              
-        self._slide_mask=slide_mask
+        self._slide_mask=slide_mask*255
         return self._slide_mask
 
 
@@ -374,7 +375,6 @@ class Annotations():
         ns=root[0].findall('Annotation')
         labels=list(root.iter('Annotation'))
         self.labels=list(set([i.attrib['PartOfGroup'] for i in labels]))
-        print(self.labels)
         annotations={l:[] for l in self.labels}
         for i in ns:
             coordinates=list(i.iter('Coordinate'))
@@ -402,8 +402,11 @@ class Annotations():
         if self.labels is None:
             self.labels=list(json_annotations.keys())
 
-        annotations = {self.class_key[k]: [[int(i['x']), int(i['y'])] for i in v2] 
-                       for k, v in json_annotations.items() for v2 in v.values()}
+        #annotations = {self.class_key[k]: [[int(i['x']), int(i['y'])] for i in v2] 
+                       #for k, v in json_annotations.items() for v2 in v.values()}
+        
+        annotations = {self.class_key[k]: [[[int(i['x']), int(i['y'])] for i in v2]
+                        for v2 in v.values()] for k, v in json_annotations.items()}
 
         self._annotations=annotations
         return annotations
