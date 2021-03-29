@@ -241,7 +241,56 @@ class Patching():
                 maskstatus=self.saveimage(mask,maskpath,self.slide.name,x,y)
 
 
+class Stitching(self):
+    def __init__(self):
+        self.patch_path=patch_path
+        self._coords=get_coords()
+    
+        if step is not None
+            self.step=step
+        else:
+            self.step=get_step(path)
+    
+        if dims is not None:
+            self.dims=dims
+        elif slide is not None:
+            self.dims=slide.dims
+        else:
+            self.dims=get_dims(path):
 
+
+    @staticmethod
+    def get_dims(path):
+        patch_files=glob.glob(os.path.join(path,'*'))
+        xs=[int(f[:-2][0]) for f in patch_files f.split('_')]
+        ys=[int(f[:-2][1]) for f in patch_files f.split('_')]
+        x_dim=max(xs)
+        y_dim=max(ys)
+
+        return (x_dim,y_dim)
+
+
+    def get_coords(self):
+
+        patch_files=glob.glob(os.path.join(path,'*'))
+        coords=[(int(f[:-2][0],int(f[:-2][0]))) 
+               for f in patch_files f.split('_')]
+    
+        self._coords=coords
+        return self._coords
+
+
+    def get_step(self):
+    
+        coords=self.get_coords()
+        functools.reduce
+
+
+    def stich(self):
+
+        temp[ynew:ynew+ysize,xnew:xnew+xsize,0]=p[:,:,0]
+        temp[ynew:ynew+ysize,xnew:xnew+xsize,1]=p[:,:,1]
+        temp[ynew:ynew+ysize,xnew:xnew+xsize,1]=p[:,:,2]
 
 
 
