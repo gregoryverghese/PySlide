@@ -6,6 +6,7 @@ into a set of smaller tiles based on annotations
 """
 
 import os
+import glob 
 
 import numpy as np
 import openslide
@@ -241,56 +242,63 @@ class Patching():
                 maskstatus=self.saveimage(mask,maskpath,self.slide.name,x,y)
 
 
-class Stitching(self):
-    def __init__(self):
+class Stitching():
+    def __init__(self,patch_path,slide=None,name=None,step=None,dims=None):
         self.patch_path=patch_path
-        self._coords=get_coords()
-    
-        if step is not None
-            self.step=step
-        else:
-            self.step=get_step(path)
+        self.coords=self._get_coords()
+        self.name=name
+        self.step=self._get_step() if step is None else step
     
         if dims is not None:
             self.dims=dims
         elif slide is not None:
             self.dims=slide.dims
         else:
-            self.dims=get_dims(path):
+            self.dims=self._get_dims()
 
 
-    @staticmethod
-    def get_dims(path):
-        patch_files=glob.glob(os.path.join(path,'*'))
-        xs=[int(f[:-2][0]) for f in patch_files f.split('_')]
-        ys=[int(f[:-2][1]) for f in patch_files f.split('_')]
-        x_dim=max(xs)
-        y_dim=max(ys)
-
-        return (x_dim,y_dim)
-
-
-    def get_coords(self):
-
-        patch_files=glob.glob(os.path.join(path,'*'))
-        coords=[(int(f[:-2][0],int(f[:-2][0]))) 
-               for f in patch_files f.split('_')]
-    
+    def _get_coords(self):
+        patch_files=glob.glob(os.path.join(self.patch_path,'*'))
+        print('found {} patches'.format(len(patch_files)))
+        coords=[(int(f.split('_')[-2:][0]),int(f.split('_')[-2:][1][:-4])) 
+                for f in patch_files]
+        
         self._coords=coords
         return self._coords
 
 
-    def get_step(self):
+    def _get_dims(self):
+        coords=self._get_coords()
+        x_dim=max([c[0] for c in coords])
+        y_dim=max([c[1] for c in coords])
+
+        return (x_dim,y_dim)
+
+
+    def _get_step(self):
+        coords=self._get_coords()
+        xs=[c[0] for c in coords]
+        step=min([abs(x1-x2) for x1, x2 in zip(xs, xs[1:]) if abs(x1-x2)!=0])
     
-        coords=self.get_coords()
-        functools.reduce
+        return step
 
 
     def stich(self):
 
-        temp[ynew:ynew+ysize,xnew:xnew+xsize,0]=p[:,:,0]
-        temp[ynew:ynew+ysize,xnew:xnew+xsize,1]=p[:,:,1]
-        temp[ynew:ynew+ysize,xnew:xnew+xsize,1]=p[:,:,2]
+        xmin=self.dims[0][0]
+        xmax=self.dims[0][1]
+        ymin=self.dims[1][0]
+        ymax=self.dims[1][1]
+        #temp=np.array
+
+        for x in range(xmin,xmax,step):
+            for y in range(ymin,ymax,step):
+                filename=self.name+'_'+str(x)+'_'+str(y)+'.png'
+                p=cv2.imwrite(filename)
+                temp[y:y+step,x:x+step,0]=p[:,:,0]
+                temp[y:y+step,x:x+step,1]=p[:,:,1]
+                temp[y:y+step,x:x+step,2]=p[:,:,2]
+        return temp
 
 
 
