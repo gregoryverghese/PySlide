@@ -308,6 +308,7 @@ class Annotations():
             annotations=self._imagej()
         elif self.source=='asap':
             annotations=self._asap()
+
         elif self.source=='csv':
             annotations=self._csv()
         elif self.path.endswith('json'):
