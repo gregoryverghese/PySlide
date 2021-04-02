@@ -22,9 +22,9 @@ __email__='gregory.verghese@gmail.com'
 
 class Patching():
 
-    MAG_FACTORS={0:1,1:2,3:4,4:16,5:32}
+    MAG_FACTORS={0:1,1:2,2:4,3:16,4:32}
 
-    def __init__(self, slide, annotations, size=(256, 256), 
+    def __init__(self, slide, annotations=None, size=(256, 256), 
                  mag_level=0,border=None, mode=False):
     
         super().__init__()
@@ -77,7 +77,7 @@ class Patching():
                 yield x, y
 
 
-    def _remove_edge_cases(self,x,y,xmin,xmax,ymin,ymax):
+    def _remove_edge_cases(self,x,y):
         x_size=int(self.size[0]*self.mag_factor*.5)
         y_size=int(self.size[1]*self.mag_factor*.5)
         xmin=self.slide.border[0][0]
@@ -243,23 +243,52 @@ class Patching():
 
 
 class Stitching():
-    def __init__(self,patch_path,slide=None,name=None,step=None,dims=None):
+
+    MAG_FACTORS={0:1,1:2,2:4,3:16,4:32}
+
+    def __init__(self,patch_path,slide=None,patching=None,name=None,
+             step=None,border=None,mag_level=0):
+
         self.patch_path=patch_path
+        patch_files=glob.glob(os.path.join(self.patch_path,'*'))
+        print('found {} patches'.format(len(patch_files)))
+        self.fext=patch_files[0].split('.')[-1]
+        self.slide=slide
         self.coords=self._get_coords()
-        self.name=name
-        self.step=self._get_step() if step is None else step
     
-        if dims is not None:
-            self.dims=dims
+        if patching is not None:
+            self.name=self.patching.slide.name
         elif slide is not None:
-            self.dims=slide.dims
+            self.name=self.slide.name
+        elif name is not None:
+            self.name=name
         else:
-            self.dims=self._get_dims()
+            self.name='pyslide_wsi'
+
+        if border is not None:
+            self.border=border
+        elif patching is not None:
+            self.border=patching.slide.border
+        elif slide is not None:
+            self.border=slide.border
+        else:
+            self.border=self._get_border()
+
+        if patching is not None:
+            self.mag_level=patching.mag_level
+        else:
+            self.mag_level=mag_level
+
+        self.step=self._get_step() if step is None else step
+
+
+    @property
+    def mag_factor(self):
+         return Stitching.MAG_FACTORS[self.mag_level]
 
 
     def _get_coords(self):
         patch_files=glob.glob(os.path.join(self.patch_path,'*'))
-        print('found {} patches'.format(len(patch_files)))
         coords=[(int(f.split('_')[-2:][0]),int(f.split('_')[-2:][1][:-4])) 
                 for f in patch_files]
         
@@ -267,38 +296,45 @@ class Stitching():
         return self._coords
 
 
-    def _get_dims(self):
+    def _get_border(self):
         coords=self._get_coords()
-        x_dim=max([c[0] for c in coords])
-        y_dim=max([c[1] for c in coords])
-
-        return (x_dim,y_dim)
+        xmax=max([c[0] for c in coords])
+        xmin=min([c[0] for c in coords])
+        ymax=max([c[1] for c in coords])
+        ymin=min([c[1] for c in coords])
+        
+        return [[xmin,xmax],[ymin,ymax]]
 
 
     def _get_step(self):
         coords=self._get_coords()
         xs=[c[0] for c in coords]
         step=min([abs(x1-x2) for x1, x2 in zip(xs, xs[1:]) if abs(x1-x2)!=0])
+        print(step, self.mag_factor)
+        return int(step/self.mag_factor)
+
+
+    def stitch(self):
+        #Need to account for binary mask
+        xmin=self.border[0][0]
+        xmax=self.border[0][1]
+        ymin=self.border[1][0]
+        ymax=self.border[1][1]
+        xnew=xmax+self.step-xmin
+        ynew=ymax+self.step-ymin
+        canvas=np.zeros((int(ynew),int(xnew),3))
     
-        return step
-
-
-    def stich(self):
-
-        xmin=self.dims[0][0]
-        xmax=self.dims[0][1]
-        ymin=self.dims[1][0]
-        ymax=self.dims[1][1]
-        #temp=np.array
-
-        for x in range(xmin,xmax,step):
-            for y in range(ymin,ymax,step):
+        for x in range(xmin,xmax,self.step):
+            for y in range(ymin,ymax,self.step):
                 filename=self.name+'_'+str(x)+'_'+str(y)+'.png'
-                p=cv2.imwrite(filename)
-                temp[y:y+step,x:x+step,0]=p[:,:,0]
-                temp[y:y+step,x:x+step,1]=p[:,:,1]
-                temp[y:y+step,x:x+step,2]=p[:,:,2]
-        return temp
+                p=cv2.imread(os.path.join(self.patch_path,filename))
+                xsize,ysize,_=p.shape
+                xnew=int((x-xmin)/self.step)
+                ynew=int((y-ymin)/self.step)
+                canvas[ynew:ynew+ysize,xnew:xnew+xsize,0]=p[:,:,0]
+                canvas[ynew:ynew+ysize,xnew:xnew+xsize,1]=p[:,:,1]
+                canvas[ynew:ynew+ysize,xnew:xnew+xsize,2]=p[:,:,2]
+        return canvas
 
 
 
