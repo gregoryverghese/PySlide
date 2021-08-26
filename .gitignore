@@ -16,3 +16,7 @@ test.py
 measure.py
 save.py
 hormad1_patching.py
+
+#doc
+*.docx
+*.csv
