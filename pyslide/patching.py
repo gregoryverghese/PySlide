@@ -1,20 +1,20 @@
-#!usr/bin/env python3
-
-"""
-patching.py: contains Patching class for splitting WSIs
-into a set of smaller tiles based on annotations
-"""
-
 import os
-import glob 
+import glob
+import json
+import xml.etree.ElementTree as ET
 
 import numpy as np
 import openslide
 import cv2
 import seaborn as sns
 from matplotlib.path import Path
+from openslide import OpenSlide
+import pandas as pd
+import seaborn as sns
+from itertools import chain
+import operator as op
+from utilities import mask2rgb
 
-from pyslide.slide import Slide
 
 __author__='Gregory Verghese'
 __email__='gregory.verghese@gmail.com'
@@ -22,13 +22,13 @@ __email__='gregory.verghese@gmail.com'
 
 class Patching():
 
-    MAG_FACTORS={0:1,1:2,2:4,3:16,4:32}
+    MAG_FACTORS={0:1,1:2,2:4,3:8,4:16}
 
-    def __init__(self, slide, annotations=None, size=(256, 256), 
+    def __init__(self, slide, annotations=None, size=(256, 256),
                  mag_level=0,border=None, mode=False):
-    
+
         super().__init__()
-        self.slide=slide 
+        self.slide=slide
         self.mag_level=mag_level
         self.size=size
         self._number=None
@@ -38,7 +38,7 @@ class Patching():
     @property
     def masks(self):
         return self._masks
-    
+
     @property
     def patches(self):
         return self._patches
@@ -54,7 +54,7 @@ class Patching():
     @property
     def slide_mask(self):
         return self.slide._slide_mask
-    
+
     @property
     def config(self):
         config={'name':self.slide.name,
@@ -64,7 +64,7 @@ class Patching():
                 'mode':None,
                 'number':self._number}
         return config
-     
+
 
     def __repr__(self):
         return str(self.config)
@@ -80,10 +80,10 @@ class Patching():
     def _remove_edge_cases(self,x,y):
         x_size=int(self.size[0]*self.mag_factor*.5)
         y_size=int(self.size[1]*self.mag_factor*.5)
-        xmin=self.slide.border[0][0]
-        xmax=self.slide.border[0][1]
-        ymin=self.slide.border[1][0]
-        ymax=self.slide.border[1][1]
+        xmin=self.slide._border[0][0]
+        xmax=self.slide._border[0][1]
+        ymin=self.slide._border[1][0]
+        ymax=self.slide._border[1][1]
         remove=False
 
         if x+x_size>xmax:
@@ -101,31 +101,31 @@ class Patching():
         self._patches=[]
         self._masks=[]
         step=step*self.mag_factor
-        xmin=self.slide.border[0][0]
-        xmax=self.slide.border[0][1]
-        ymin=self.slide.border[1][0]
-        ymax=self.slide.border[1][1]
+        xmin=self.slide._border[0][0]
+        xmax=self.slide._border[0][1]
+        ymin=self.slide._border[1][0]
+        ymax=self.slide._border[1][1]
 
         for x, y in self.patching(step,xmin,xmax,ymin,ymax):
             name=self.slide.name+'_'+str(x)+'_'+str(y)
             if self._remove_edge_cases(x,y):
-                continue
+                #continue
+                pass
             self.patches.append({'name':name,'x':x,'y':y})
             if mask_flag:
-                mask=self.slide._slide_mask[y:y+self.size[0],x:x+self.size[1]]
+                mask=self.slide.slide_mask[y:y+self.size[0],x:x+self.size[1]]
                 if mode == 'focus':
                     classes = len(np.unique(mask))
                     self._masks.append({'x':x, 'y':y, 'classes':classes})
                     self.focus()
                 else:
                     self._masks.append({'x':x, 'y':y})
-
         self._number=len(self._patches)
         return self._number
-    
+
 
     def focus(self, task='classes'):
-        
+
         if task=='classes':
             index=[i for i in range(len(self._patches)) if
                   self._masks[i][task] >1]
@@ -138,13 +138,13 @@ class Patching():
 
         return len(self._patches)
 
-    
+
     @staticmethod
     def __filter(y_cnt,cnts,threshold):
         ratio=y_cnt/float(sum(cnts))
         return ratio>=threshold
 
-    
+
     #TODO:how do we set a threshold in multisclass
     def generate_labels(self,threshold=1):
         labels=[]
@@ -152,23 +152,23 @@ class Patching():
             cls,cnts=np.unique(m, return_counts=True)
             y=cls[cnts==cnts.max()]
             y_cnt=cnts.max()
-            if self.__filter(y_cnt,cnts,threshold): 
+            if self.__filter(y_cnt,cnts,threshold):
                 self.masks[i]['labels']=y[0]
                 labels.append(y)
             else:
-                self.masks[i]['labels']=9 
+                self.masks[i]['labels']=9
                 #TODO:do we want a labels attribute
                 labels.append(y)
 
         return np.unique(np.array(labels),return_counts=True)
-            
+
 
     def plotlabeldist(self):
         labels=[self.masks[i]['labels'] for i in range(len(self.masks))]
         return sns.distplot(labels)
-    
 
-    #TODO: maybe we don't need .5 - should check 
+
+    #TODO: maybe we don't need .5 - should check
     def extract_patch(self, x=None, y=None):
         x_size=int(self.size[0]*self.mag_factor*.5)
         y_size=int(self.size[1]*self.mag_factor*.5)
@@ -183,18 +183,18 @@ class Patching():
         for p in self._patches:
             patch=self.extract_patch(p['x'],p['y'])
             yield patch,p['x'],p['y']
-    
+
 
     def extract_mask(self, x=None, y=None):
 
         x_size=int(self.size[0]*self.mag_factor*.5)
         y_size=int(self.size[1]*self.mag_factor*.5)
-        mask=self.slide_mask[y-y_size:y+y_size,x-x_size:x+x_size][:,:,0]
+        mask=self.slide.generate_mask()[y-y_size:y+y_size,x-x_size:x+x_size]
         mask=cv2.resize(mask,(self.size[0],self.size[1]))
 
-        return mask 
-    
-    
+        return mask
+
+
     def extract_masks(self):
         for m in self._masks:
             mask=self.extract_mask(m['x'],m['y'])
@@ -214,19 +214,21 @@ class Patching():
         elif (x and y) is not None:
              filename=filename+'_'+str(x)+'_'+str(y)+'.png'
              image_path=os.path.join(path,filename)
+        print('image_path',image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         status=cv2.imwrite(image_path,image)
         return status
-   
+
 
     #TODO fix masks. Currently saving only first mask over and over
     def save(self, path, mask_flag=False):
-    
+
         patchpath=os.path.join(path,'images')
         try:
             os.mkdir(patchpath)
         except OSError as error:
             print(error)
-    
+
         if mask_flag:
             maskpath=os.path.join(path,'masks')
             try:
@@ -234,17 +236,24 @@ class Patching():
             except OSError as error:
                 print(error)
 
-            masks_generator=self.extract_masks()
-        for patch,x,y in self.extract_patches(): 
+            mask_generator=self.extract_masks()
+        for patch,x,y in self.extract_patches():
+            #if np.mean(patch[:,:,1])>210:
+                #continue
+            #test=patch[:,:,1]
+
+            #if len(test[test>220])>(0.3*self.size[0]**2):
+                #print('here')
+                #continue
             patchstatus=self.saveimage(patch,patchpath,self.slide.name,x,y)
-            if mask_flag:    
+            if mask_flag:
                 mask,x,y=next(mask_generator)
                 maskstatus=self.saveimage(mask,maskpath,self.slide.name,x,y)
 
 
 class Stitching():
 
-    MAG_FACTORS={0:1,1:2,2:4,3:16,4:32}
+    MAG_FACTORS={0:1,1:2,2:4,3:8,4:16}
 
     def __init__(self,patch_path,slide=None,patching=None,name=None,
              step=None,border=None,mag_level=0):
@@ -255,7 +264,7 @@ class Stitching():
         self.fext=patch_files[0].split('.')[-1]
         self.slide=slide
         self.coords=self._get_coords()
-    
+
         if patching is not None:
             self.name=self.patching.slide.name
         elif slide is not None:
@@ -273,6 +282,7 @@ class Stitching():
             self.border=slide.border
         else:
             self.border=self._get_border()
+        print('border',self.border)
 
         if patching is not None:
             self.mag_level=patching.mag_level
@@ -289,9 +299,9 @@ class Stitching():
 
     def _get_coords(self):
         patch_files=glob.glob(os.path.join(self.patch_path,'*'))
-        coords=[(int(f.split('_')[-2:][0]),int(f.split('_')[-2:][1][:-4])) 
+        coords=[(int(f.split('_')[-2:][0]),int(f.split('_')[-2:][1][:-4]))
                 for f in patch_files]
-        
+
         self._coords=coords
         return self._coords
 
@@ -302,7 +312,7 @@ class Stitching():
         xmin=min([c[0] for c in coords])
         ymax=max([c[1] for c in coords])
         ymin=min([c[1] for c in coords])
-        
+
         return [[xmin,xmax],[ymin,ymax]]
 
 
@@ -310,38 +320,24 @@ class Stitching():
         coords=self._get_coords()
         xs=[c[0] for c in coords]
         step=min([abs(x1-x2) for x1, x2 in zip(xs, xs[1:]) if abs(x1-x2)!=0])
-        print(step, self.mag_factor)
         return int(step/self.mag_factor)
 
 
-    def stitch(self):
-        #Need to account for binary mask
-        xmin=self.border[0][0]
-        xmax=self.border[0][1]
-        ymin=self.border[1][0]
-        ymax=self.border[1][1]
-        xnew=xmax+self.step-xmin
-        ynew=ymax+self.step-ymin
+    def stitch(self,size=None):
+        step=self.step*self.mag_factor
+        xmin,xmax=self.border[0][0],self.border[0][1]
+        ymin,ymax=self.border[1][0],self.border[1][1]
+        z=2048*self.mag_factor
+        xnew=(xmax+z-xmin)/self.mag_factor
+        ynew=(ymax+z-ymin)/self.mag_factor
         canvas=np.zeros((int(ynew),int(xnew),3))
-    
-        for x in range(xmin,xmax,self.step):
-            for y in range(ymin,ymax,self.step):
-                filename=self.name+'_'+str(x)+'_'+str(y)+'.png'
+        step=self.step*self.mag_factor
+        for x in range(xmin,xmax+step,step):
+            for y in range(ymin,ymax+step,step):
+                filename=self.name+'_'+str(x)+'_'+str(y)+'.'+self.fext
                 p=cv2.imread(os.path.join(self.patch_path,filename))
                 xsize,ysize,_=p.shape
-                xnew=int((x-xmin)/self.step)
-                ynew=int((y-ymin)/self.step)
-                canvas[ynew:ynew+ysize,xnew:xnew+xsize,0]=p[:,:,0]
-                canvas[ynew:ynew+ysize,xnew:xnew+xsize,1]=p[:,:,1]
-                canvas[ynew:ynew+ysize,xnew:xnew+xsize,2]=p[:,:,2]
-        return canvas
-
-
-
-
-
-
-
-
-
-
+                xnew=int((x-xmin)/self.mag_factor)
+                ynew=int((y-ymin)/self.mag_factor)
+                canvas[ynew:ynew+ysize,xnew:xnew+xsize,:]=p
+        return canvas.astype(np.uint8)
