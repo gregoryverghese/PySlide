@@ -221,17 +221,15 @@ class Slide(OpenSlide):
 class Annotations():
 
     """
-    returns dictionary of coordinates of ROIs
+    Returns dictionary of coordinates of ROIs. Reads annotation 
+    files in either xml and json format and returns a dictionary 
+    containing x,y coordinates for each region of interest in the 
+    annotation
 
-    reads annotation files in either xml and json format
-    and returns a dictionary containing x,y coordinates
-    for each region of interest in the annotation
-
-    Attributes:
-        path: string path to annotation file
-        annotation_type: file type
-        labels: list of ROI names ['roi1',roi2']
-        _annotations: dictonary with return files
+    :param path: string path to annotation file
+    :param annotation_type: file type
+    :param labels: list of ROI names ['roi1',roi2']
+    :param _annotations: dictonary with return files
                       {roi1:[[x1,y1],[x2,y2],...[xn,yn],...roim:[]}
     """
     def __init__(self, path, source=None,labels=[]):
@@ -254,13 +252,19 @@ class Annotations():
 
     def generate_annotations(self):
         """
-        calls appropriate method for file type
-        Returns:
-            annotations: dictionary of coordinates
+        Calls appropriate method for file type.
+
+        return: annotations: dictionary of coordinates
         """
         class_key=self.class_key
         if not isinstance(self.paths,list):
             self._paths=[self.paths]
+       
+        if source is not None:
+            for p in paths:
+                annotations=getattr(self,'_'+p)
+        
+        #TODO:combine annotations from multiple sources
         #for p, source in zip(self.paths,self.source):
         for p in self.paths:
             #if source=='imagej':
@@ -356,6 +360,32 @@ class Annotations():
 
         annotations = {self.class_key[k]: v for k,v in annotations.items()}
         return annotations
+
+    
+    def _qupath(self,json_path,label):
+        with open(json_path) as jsonFile:
+            j=json.load(jsonFile)
+        test=[]
+        for a in j:
+            try:
+                x=len(a['properties']['classification'])
+            except Exception as e:
+                continue
+            if a['properties']['classification']['name']==label:
+                if a['geometry']['type']=="Polygon":
+                    for a2 in a['geometry']['coordinates']:
+                        a2=[[int(i[0]),int(i[1])] for i in a2]
+                        test.append(a2)
+                elif a['geometry']['type']=="MultiPolygon":
+                    for a2 in a['geometry']['coordinates']:
+                        for a3 in a2:
+                            a3=[[int(i[0]),int(i[1])] for i in a3]
+                            test.append(a3)
+                elif a['geometry']['type']=="LineString":
+                    a2=a['geometry']['coordinates']
+                    a2=[[int(i[0]),int(i[1])] for i in a2]
+                    test.append(a2)
+        return test
 
 
     def _json(self,path):
