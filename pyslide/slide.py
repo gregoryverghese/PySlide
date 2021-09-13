@@ -30,12 +30,12 @@ class Slide(OpenSlide):
     """
     WSI object that enables annotation overlay wrapper around 
     openslide.OpenSlide class. Generates annotation mask.
-    Attributes:
-        _slide_mask: ndarray mask representation
-        dims: dimensions of WSI
-        name: string name
-        draw_border: boolean to generate border based on annotations
-        _border: list of border coordinates [(x1,y1),(x2,y2)]
+
+    :param _slide_mask: ndarray mask representation
+    :param dims dimensions of WSI
+    :param name: string name
+    :param draw_border: boolean to generate border based on annotations
+    :param _border: list of border coordinates [(x1,y1),(x2,y2)]
     """
     MAG_fACTORS={0:1,1:2,3:4,4:8,5:16}
 
@@ -44,8 +44,8 @@ class Slide(OpenSlide):
         super().__init__(filename)
 
         if annotations_path is not None:
-            ann=Annotations(annotations_path)
-            self.annotations=ann.generate_annotations()
+            annotate=Annotations(annotations_path)
+            self.annotations=annotate.generate_annotations()
         else:
             self.annotations=annotations
 
@@ -234,10 +234,8 @@ class Annotations():
     """
     def __init__(self, path, source=None,labels=[]):
         self.paths=path
-        if source is None:
-            self.source==[None]*len(self.paths)
-        else:
-            self.source=source
+        #self.source==[None]*len(self.paths)
+        self.source=source
         self.labels = labels
         self._annotations={}
 
@@ -253,7 +251,6 @@ class Annotations():
     def generate_annotations(self):
         """
         Calls appropriate method for file type.
-
         return: annotations: dictionary of coordinates
         """
         class_key=self.class_key
@@ -261,36 +258,15 @@ class Annotations():
             self._paths=[self.paths]
        
         if source is not None:
-            for p in paths:
-                annotations=getattr(self,'_'+p)
-        
-        #TODO:combine annotations from multiple sources
-        #for p, source in zip(self.paths,self.source):
-        for p in self.paths:
-            #if source=='imagej':
-                #annotations=self._imagej(p)
-            #elif source=='asap':
-                #annotations=self._asap(p)
-            if p.endswith('xml'):
-                anns=self._imagej(p)
-            elif p.endswith=='csv':
-                anns=self._csv(p)
-            elif p.endswith('json'):
-                anns=self._json(p)
-            elif p.endswith('csv'):
-                anns=self._csv(p)
-            else:
-                raise ValueError('provide source or valid filetype')
-            for k, v in anns.items():
-                if k in self._annotations:
-                    self._annotations[k].append(anns[k])
-                else:
-                    self._annotations[k]=anns[k]
-        if self.labels is not None:
-            #annotations=self.filter_labels(annotations)
-            pass
+            for p in self.paths:
+                annotations=getattr(self,'_'+source)(p)
+                for k, v in annotations.items()
+                    if k in self._annotations:
+                        self._annotations[k].append(v)
+                    else:
+                        self._annotations[k]=v
         return self._annotations
-
+        
 
     def filter_labels(self, labels):
         """
