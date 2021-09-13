@@ -260,7 +260,7 @@ class Annotations():
         if source is not None:
             for p in self.paths:
                 annotations=getattr(self,'_'+source)(p)
-                for k, v in annotations.items()
+                for k, v in annotations.items():
                     if k in self._annotations:
                         self._annotations[k].append(v)
                     else:
@@ -271,8 +271,8 @@ class Annotations():
     def filter_labels(self, labels):
         """
         remove labels from annotations
-        Returns:
-            annotations: filtered dict of coordinates
+        :param labels: label list to remove
+        :return annotations: filtered annotation dictionary
         """
         keys = list(self._annotations.keys())
         for k in keys:
@@ -283,21 +283,22 @@ class Annotations():
 
 
     def rename_labels(self, label_names):
+        """
+
+        """
         for k,v in label_names.items():
             self._annotations[v] = self._annotations.pop(k)
     
 
     def encode_keys(self):
-        print('keys',self.class_key)
         self._annotations={self.class_key[k]: v for k,v in self._annotations.items()}
 
 
     def _imagej(self,path):
         """
         parses xml files
-
-        Returns:
-            annotations: dict of coordinates
+        :param path:
+        :return annotations: dict of coordinates
         """
         tree=ET.parse(path)
         root=tree.getroot()
@@ -338,38 +339,33 @@ class Annotations():
         return annotations
 
     
-    def _qupath(self,json_path,label):
-        with open(json_path) as jsonFile:
-            j=json.load(jsonFile)
-        test=[]
+    def _qupath(self,path):
+        annotations=[]
+        with open(path) as json_file:
+            j=json.load(json_file)
         for a in j:
-            try:
-                x=len(a['properties']['classification'])
-            except Exception as e:
-                continue
-            if a['properties']['classification']['name']==label:
-                if a['geometry']['type']=="Polygon":
-                    for a2 in a['geometry']['coordinates']:
-                        a2=[[int(i[0]),int(i[1])] for i in a2]
-                        test.append(a2)
+            if a['geometry']['type']=="Polygon":
+                for a2 in a['geometry']['coordinates']:
+                    a2=[[int(i[0]),int(i[1])] for i in a2]
+                    annotations.append(a2)
                 elif a['geometry']['type']=="MultiPolygon":
                     for a2 in a['geometry']['coordinates']:
                         for a3 in a2:
                             a3=[[int(i[0]),int(i[1])] for i in a3]
-                            test.append(a3)
+                            annotations.append(a3)
                 elif a['geometry']['type']=="LineString":
                     a2=a['geometry']['coordinates']
                     a2=[[int(i[0]),int(i[1])] for i in a2]
-                    test.append(a2)
-        return test
+                    annotations.append(a2)
+        return annotations
 
 
     def _json(self,path):
         """
-        parses json file
+        Parses json file with following structure.
 
-        Returns:
-            annotations: dict of coordinates
+        :param path:
+        :return annotations: dict of coordinates
         """
         with open(path) as json_file:
             json_annotations=json.load(json_file)
@@ -382,10 +378,18 @@ class Annotations():
 
 
     def _dataframe(self):
+        """
+        Parses dataframe with following structure
+        """
         pass
 
 
-    def _csv(self):
+    def _csv(self,path):
+        """
+        Parses csv file with following structure
+        :param path: 
+        :return annotations: dict of coordinates
+        """
         anns_df=pd.read_csv(path)
         anns_df.fillna('undefined', inplace=True)
         anns_df.set_index('labels',drop=True,inplace=True)
@@ -400,8 +404,8 @@ class Annotations():
 
     def df(self):
         """
-        returns dataframe of annotations
-
+        Returns dataframe of annotations.
+        :return :dataframe of annotations
         """
         key={v:k for k,v in self.class_key.items()}
         labels=[[l]*len(self._annotations[l]) for l in self._annotations.keys()]
@@ -416,8 +420,7 @@ class Annotations():
 
     def save(self,save_path):
         """
-        save down annotations in csv file
-        Args:
-            save_path:string save path
+        Save down annotations in csv file.
+        :param save_path: path to save annotations
         """
         self.df().to_csv(save_path)
