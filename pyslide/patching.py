@@ -1,10 +1,8 @@
 import os
 import glob
 import json
-import xml.etree.ElementTree as ET
 
 import numpy as np
-import openslide
 import cv2
 import seaborn as sns
 from matplotlib.path import Path
@@ -44,16 +42,8 @@ class Patching():
         return self._patches
 
     @property
-    def annotations(self):
-        return _self.annotations
-
-    @property
     def mag_factor(self):
         return Patching.MAG_FACTORS[self.mag_level]
-
-    @property
-    def slide_mask(self):
-        return self.slide._slide_mask
 
     @property
     def config(self):
@@ -67,17 +57,30 @@ class Patching():
 
 
     def __repr__(self):
+        """
+        object representation
+        :return str(self.config)
+        """
         return str(self.config)
 
 
     @staticmethod
     def patching(step,xmin,xmax,ymin,ymax):
+        """
+        step across coordinate range
+        """
         for x in range(xmin,xmax, step):
             for y in range(ymin,ymax,step):
                 yield x, y
 
 
     def _remove_edge_cases(self,x,y):
+        """
+        remove edge cases based on dimensions of patch
+        :param x: base x coordinate to test 
+        :param y: base y coordiante to test
+        :return remove: boolean remove patch or not
+        """
         x_size=int(self.size[0]*self.mag_factor*.5)
         y_size=int(self.size[1]*self.mag_factor*.5)
         xmin=self.slide._border[0][0]
@@ -98,6 +101,13 @@ class Patching():
 
 
     def generate_patches(self,step, mode='sparse',mask_flag=False):
+        """
+        generate patch coordinates based on mag,step and size
+        :param step: integer: step size
+        :param mode: sparse or focus
+        :param mask_flag: include masks
+        :return len(self._patches): Number of patches
+        """
         self._patches=[]
         self._masks=[]
         step=step*self.mag_factor
