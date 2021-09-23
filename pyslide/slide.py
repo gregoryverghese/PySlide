@@ -296,7 +296,7 @@ class Annotations():
 
     def _imagej(self,path):
         """
-        parses xml files
+        Parses xml files
         :param path:
         :return annotations: dict of coordinates
         """
@@ -321,7 +321,11 @@ class Annotations():
 
 
     def _asap(self,path):
-
+        """
+        Parses _asap files
+        :param path:
+        :return annotations: dict of coordinates
+        """
         tree=ET.parse(path)
         root=tree.getroot()
         ns=root[0].findall('Annotation')
@@ -340,23 +344,40 @@ class Annotations():
 
     
     def _qupath(self,path):
+        """
+        Parses qupath annotation json files
+        :param path: json file path
+        :return annotations: dictionary of annotations
+        """
         annotations=[]
         with open(path) as json_file:
             j=json.load(json_file)
         for a in j:
-            if a['geometry']['type']=="Polygon":
-                for a2 in a['geometry']['coordinates']:
+            geometry=a['geometry']['type']
+            coordinates=a['geometry']['coordinates']
+            if geometry=="Polygon":
+                for a2 in coordinates:
                     a2=[[int(i[0]),int(i[1])] for i in a2]
                     annotations.append(a2)
-                elif a['geometry']['type']=="MultiPolygon":
-                    for a2 in a['geometry']['coordinates']:
-                        for a3 in a2:
-                            a3=[[int(i[0]),int(i[1])] for i in a3]
-                            annotations.append(a3)
-                elif a['geometry']['type']=="LineString":
-                    a2=a['geometry']['coordinates']
-                    a2=[[int(i[0]),int(i[1])] for i in a2]
-                    annotations.append(a2)
+            elif geometry=="MultiPolygon":
+                for a2 in coordinates:
+                    for a3 in a2:
+                        a3=[[int(i[0]),int(i[1])] for i in a3]
+                        annotations.append(a3)
+            elif geometry=="LineString":
+                a2=coordinates
+                a2=[[int(i[0]),int(i[1])] for i in a2]
+                annotations.append(a2)
+            elif geometry=="Rectangle":
+                pass
+            elif geometry=="Ellipse":
+                pass
+            elif geometry=="Line":
+                pass
+            elif geometry=="Polyline":
+                pass
+            elif geometry=="Points":
+                pass
         return annotations
 
 
