@@ -13,7 +13,21 @@ def resizeImage(dim, factor=2048, threshold=0, op=operator.gt):
 
 import numpy as np
 import xml.etree.ElementTree as ET
+import seaborn as sns
 from itertools import chain
+
+
+def mask2rgb(mask):
+    n_classes=len(np.unique(mask))
+    colors=sns.color_palette('hls',n_classes)
+    rgb_mask=np.zeros(mask.shape+(3,))
+    for c in range(1,n_classes+1): 
+        t=(mask==c)
+        rgb_mask[:,:,0][t]=colors[c-1][0]
+        rgb_mask[:,:,1][t]=colors[c-1][1]
+        rgb_mask[:,:,2][t]=colors[c-1][2]
+    return rgb_mask
+
 
 def draw_boundary(annotations, offset=100):
 
