@@ -19,7 +19,7 @@ import pandas as pd
 import seaborn as sns
 from itertools import chain
 import operator as op
-from utilities import mask2rgb
+from pyslide.utilities import mask2rgb
 
 
 __author__='Gregory Verghese'
@@ -75,7 +75,7 @@ class Slide(OpenSlide):
         for k in self.annotations:
             v = self.annotations[k]
             v = [np.array(a) for a in v]
-            cv2.fillPoly(slide_mask, v, color=k)
+            cv2.fillPoly(slide_mask, v, color=k+1)
 
         if size is not None:
             slide_mask=cv2.resize(slide_mask, size)
@@ -233,7 +233,7 @@ class Annotations():
                       {roi1:[[x1,y1],[x2,y2],...[xn,yn],...roim:[]}
     """
     def __init__(self, path, source=None,labels=[]):
-        self.paths=path
+        self.paths=path if isinstance(path,list) else [path]
         #self.source==[None]*len(self.paths)
         self.source=source
         self.labels = labels
@@ -257,9 +257,9 @@ class Annotations():
         if not isinstance(self.paths,list):
             self._paths=[self.paths]
        
-        if source is not None:
+        if self.source is not None:
             for p in self.paths:
-                annotations=getattr(self,'_'+source)(p)
+                annotations=getattr(self,'_'+self.source)(p)
                 for k, v in annotations.items():
                     if k in self._annotations:
                         self._annotations[k].append(v)
@@ -349,36 +349,45 @@ class Annotations():
         :param path: json file path
         :return annotations: dictionary of annotations
         """
-        annotations=[]
+        annotations_dict={}
         with open(path) as json_file:
             j=json.load(json_file)
-        for a in j:
-            geometry=a['geometry']['type']
-            coordinates=a['geometry']['coordinates']
-            if geometry=="Polygon":
-                for a2 in coordinates:
+
+        classes=list(set([cls['properties']['classification']['name'] for cls
+                          in j]))
+        for i in range(len(classes)):
+            cls=classes[i]
+            annotations=[]
+            for a in j:
+                if a['properties']['classification']['name']!=cls:
+                    continue
+                geometry=a['geometry']['type']
+                coordinates=a['geometry']['coordinates']
+                if geometry=="Polygon":
+                    for a2 in coordinates:
+                        a2=[[int(i[0]),int(i[1])] for i in a2]
+                        annotations.append(a2)
+                elif geometry=="MultiPolygon":
+                    for a2 in coordinates:
+                        for a3 in a2:
+                            a3=[[int(i[0]),int(i[1])] for i in a3]
+                            annotations.append(a3)
+                elif geometry=="LineString":
+                    a2=coordinates
                     a2=[[int(i[0]),int(i[1])] for i in a2]
                     annotations.append(a2)
-            elif geometry=="MultiPolygon":
-                for a2 in coordinates:
-                    for a3 in a2:
-                        a3=[[int(i[0]),int(i[1])] for i in a3]
-                        annotations.append(a3)
-            elif geometry=="LineString":
-                a2=coordinates
-                a2=[[int(i[0]),int(i[1])] for i in a2]
-                annotations.append(a2)
-            elif geometry=="Rectangle":
-                pass
-            elif geometry=="Ellipse":
-                pass
-            elif geometry=="Line":
-                pass
-            elif geometry=="Polyline":
-                pass
-            elif geometry=="Points":
-                pass
-        return annotations
+                elif geometry=="Rectangle":
+                    pass
+                elif geometry=="Ellipse":
+                    pass
+                elif geometry=="Line":
+                    pass
+                elif geometry=="Polyline":
+                    pass
+                elif geometry=="Points":
+                    pass
+                annotations_dict[i]=annotations
+        return annotations_dict
 
 
     def _json(self,path):
