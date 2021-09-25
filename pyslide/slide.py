@@ -37,22 +37,19 @@ class Slide(OpenSlide):
     :param draw_border: boolean to generate border based on annotations
     :param _border: list of border coordinates [(x1,y1),(x2,y2)]
     """
-    MAG_fACTORS={0:1,1:2,3:4,4:8,5:16}
+    MAG_fACTORS={0:1,1:2,2:4,3:8,4:16,5:32}
 
-    def __init__(self,filename,mag=0,draw_border=False,
-                 annotations=None,annotations_path=None):
+    def __init__(self,filename,mag=0,annotations=None,annotations_path=None):
         super().__init__(filename)
 
+        self.mag=mag
+        self.dims=self.dimensions
+        self.name=os.path.basename(filename)
+        self._border=None
         if annotations_path is not None:
-            annotate=Annotations(annotations_path)
-            self.annotations=annotate.generate_annotations()
+            self.annotations=self.generate_annotations(annotations_path)
         else:
             self.annotations=annotations
-
-        self.dims = self.dimensions
-        self.name = os.path.basename(filename)[:-5]
-        self.draw_border=draw_border
-        self._border=None
 
 
     @property
@@ -76,7 +73,6 @@ class Slide(OpenSlide):
             v = self.annotations[k]
             v = [np.array(a) for a in v]
             cv2.fillPoly(slide_mask, v, color=k+1)
-
         if size is not None:
             slide_mask=cv2.resize(slide_mask, size)
         return slide_mask
@@ -125,19 +121,25 @@ class Slide(OpenSlide):
     def get_border(self,space=100):
         """
         Generate border around max/min annotation points
-
         :param space: gap between max/min annotation point and border
         :self._border: border dimensions [(x1,y1),(x2,y2)]
         """
-        coordinates = list(chain(*self.annotations.values()))
-        coordinates=list(chain(*coordinates))
-        f=lambda x: (min(x)-space, max(x)+space)
-        self._border=list(map(f, list(zip(*coordinates))))
+        if self.annotations is None:
+            self._border=[[0,self.dims[0]],[0,self.dims[1]]]
+        else:
+            coordinates = list(chain(*[self.annotations[a] for a in 
+                                   self.annotations]))
+            coordinates=list(chain(*coordinates))
+            f=lambda x: (min(x)-space, max(x)+space)
+            self._border=list(map(f, list(zip(*coordinates))))
+        mag_factor=Slide.MAG_fACTORS[self.mag]
+        f=lambda x: (x[0]/mag_factor,x[1]/mag_factor)
+        self._border=list(map(f,self._border))
 
         return self._border
 
 
-    def detect_component(self,down_factor=10):
+    def detect_components(self,down_factor=10):
         """
         Find the largest section on the slide
         :param down_factor: 
@@ -151,21 +153,28 @@ class Slide(OpenSlide):
         blur=cv2.bilateralFilter(np.bitwise_not(gray),9,100,100)
         _,thresh=cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         contours,_=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
-
-        c = max(contours, key = cv2.contourArea)
-        x,y,w,h = cv2.boundingRect(c)
+        
+        borders=[]
+        components=[]
+        c_max=max(contours, key = cv2.contourArea)
+        x,y,w,h = cv2.boundingRect(c_max)
+        """
+        for c in contours:
+        """
+        x,y,w,h = cv2.boundingRect(c_max)
         x_scale=self.dims[0]/new_dims[0]
         y_scale=self.dims[1]/new_dims[1]
-
         x1=round(x_scale*x)
         x2=round(x_scale*(x+w))
         y1=round(y_scale*y)
         y2=round(y_scale*(y+h))
-
         self._border=[(x1,x2),(y1,y2)]
         image=cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
-
-        return image, self._border
+        #components.append(image)
+        #borders.append([(x1,x2),(y1,y2)])
+        return image, self._border 
+    
+        #return components, borders
 
 
     def generate_region(self, mag=0, x=None, y=None, x_size=None, y_size=None,
@@ -185,11 +194,30 @@ class Slide(OpenSlide):
         """
         if x is None:
             self.get_border()
-            x, y = self.border
-        x_min, x_max=x
-        y_min, y_max=y
-        x_size=x_max-x_min
-        y_size=y_max-y_min
+            x, y = self._border        
+        if x is not None:
+            if isinstance(x,tuple):
+                if x_size is None:
+                    x_min, x_max=x
+                    x_size=x_max-x_min
+                elif x_size is not None:
+                    x_min=x[0]
+                    x_max=x_min+x_size
+            elif isinstance(x,int):
+                x_min=x
+                x_max=x+x_size
+        if y is not None:
+            if isinstance(y,tuple):
+                if y_size is None:
+                    y_min, y_max=y
+                    y_size=y_max-y_min
+                elif y_size is not None:
+                    y_min=y[0]
+                    y_max=y_min+y_size
+            elif isinstance(y,int):
+                y_min=y
+                y_max=y_min+y_size
+
         x_size=int(x_size/Slide.MAG_fACTORS[mag])
         y_size=int(y_size/Slide.MAG_fACTORS[mag])
         if scale_border:
@@ -198,7 +226,7 @@ class Slide(OpenSlide):
         print('x_size:{}'.format(x_size))
         print('y_size:{}'.format(y_size))
         region=self.read_region((x_min,y_min),mag,(x_size, y_size))
-        mask=self.slide_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
+        mask=self.generate_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
         return np.array(region.convert('RGB')), mask
 
 
