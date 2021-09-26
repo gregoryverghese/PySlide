@@ -11,7 +11,7 @@ import pandas as pd
 import seaborn as sns
 from itertools import chain
 import operator as op
-from utilities import mask2rgb
+from pyslide.utilities import mask2rgb
 
 
 __author__='Gregory Verghese'
