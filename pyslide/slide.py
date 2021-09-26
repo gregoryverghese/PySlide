@@ -153,31 +153,25 @@ class Slide(OpenSlide):
         blur=cv2.bilateralFilter(np.bitwise_not(gray),9,100,100)
         _,thresh=cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         contours,_=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
-        
         borders=[]
-        components=[]
-        c_max=max(contours, key = cv2.contourArea)
-        x,y,w,h = cv2.boundingRect(c_max)
-        """
+        components=[] 
         for c in contours:
-        """
-        x,y,w,h = cv2.boundingRect(c_max)
-        print('w',w,'h',h)
-        x_scale=self.dims[0]/new_dims[0]
-        y_scale=self.dims[1]/new_dims[1]
-        print('w',w*x_scale,'h',h*y_scale)
-        x1=round(x_scale*x)
-        x2=round(x_scale*(x+w))
-        y1=round(y_scale*y)
-        y2=round(y_scale*(y-h))
-        self._border=[(x1,x2),(y1,y2)]
-        image=cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
-        #components.append(image)
-        #borders.append([(x1,x2),(y1,y2)])
-        return image, self._border 
+            x,y,w,h = cv2.boundingRect(c)
+            x_scale=self.dims[0]/new_dims[0]
+            y_scale=self.dims[1]/new_dims[1]
+            x1=round(x_scale*x)
+            x2=round(x_scale*(x+w))
+            y1=round(y_scale*y)
+            y2=round(y_scale*(y-h))
+            self._border=[(x1,x2),(y1,y2)]
+            image=cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
+            components.append(image)
+            borders.append([(x1,x2),(y1,y2)])
+        #if largest:
+            #max_c=max(contours, key = cv2.contourArea)
+            #borders=
+        return components, borders 
     
-        #return components, borders
-
 
     def generate_region(self, mag=0, x=None, y=None, x_size=None, y_size=None,
                         scale_border=False, factor=1, threshold=None, operator='=>'):
@@ -219,19 +213,28 @@ class Slide(OpenSlide):
             elif isinstance(y,int):
                 y_min=y
                 y_max=y_min+y_size
-
         x_size=int(x_size/Slide.MAG_fACTORS[mag])
         y_size=int(y_size/Slide.MAG_fACTORS[mag])
         if scale_border:
             x_size = Slide.resize_border(x_size, factor, threshold, operator)
             y_size = Slide.resize_border(y_size, factor, threshold, operator)
-        print('x_size:{}'.format(x_size))
-        print('y_size:{}'.format(y_size))
-        print(x_min,y_min,x_size,x_size)
+        print(y_min)
+        print(y_size)
+        print(x_min)
+        print(x_size)
+        print(x_min+x_size)
+        print(y_min+y_size)
+        if (x_min+x_size)>self.dimensions[0]:
+            x_size=self.dimensions[0]-x_min
+        if (y_min+y_size)>self.dimensions[1]:
+            print('gregory')
+            y_size=self.dimensions[1]-y_min
+        print(x_min)
+        print(y_min)
         region=self.read_region((x_min,y_min),mag,(x_size, y_size))
         mask=self.generate_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
-        return np.array(region.convert('RGB')), mask
-
+        #return np.array(region.convert('RGB')), mask
+        return region
 
     def save(self, path, size=(2000,2000), mask=False):
         """
