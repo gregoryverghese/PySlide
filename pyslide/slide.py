@@ -127,8 +127,7 @@ class Slide(OpenSlide):
         if self.annotations is None:
             self._border=[[0,self.dims[0]],[0,self.dims[1]]]
         else:
-            coordinates = list(chain(*[self.annotations[a] for a in 
-                                   self.annotations]))
+            coordinates = list(chain(*list(self.annotations.values())))
             coordinates=list(chain(*coordinates))
             f=lambda x: (min(x)-space, max(x)+space)
             self._border=list(map(f, list(zip(*coordinates))))
@@ -146,9 +145,10 @@ class Slide(OpenSlide):
         :return image: image containing contour around detected section
         :return self._border: [(x1,x2),(y1,y2)] around detected section
         """
-        f = lambda x: round(x/100)
-        new_dims=list(map(f,self.dims))
-        image=np.array(self.get_thumbnail(new_dims))
+        #f = lambda x: round(x/100)
+        #new_dims=list(map(f,self.dims))
+        new_dims=self.level_dimensions[6]
+        image=np.array(self.get_thumbnail(self.level_dimensions[6]))
         gray=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
         blur=cv2.bilateralFilter(np.bitwise_not(gray),9,100,100)
         _,thresh=cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
@@ -162,12 +162,14 @@ class Slide(OpenSlide):
         for c in contours:
         """
         x,y,w,h = cv2.boundingRect(c_max)
+        print('w',w,'h',h)
         x_scale=self.dims[0]/new_dims[0]
         y_scale=self.dims[1]/new_dims[1]
+        print('w',w*x_scale,'h',h*y_scale)
         x1=round(x_scale*x)
         x2=round(x_scale*(x+w))
         y1=round(y_scale*y)
-        y2=round(y_scale*(y+h))
+        y2=round(y_scale*(y-h))
         self._border=[(x1,x2),(y1,y2)]
         image=cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
         #components.append(image)
@@ -225,6 +227,7 @@ class Slide(OpenSlide):
             y_size = Slide.resize_border(y_size, factor, threshold, operator)
         print('x_size:{}'.format(x_size))
         print('y_size:{}'.format(y_size))
+        print(x_min,y_min,x_size,x_size)
         region=self.read_region((x_min,y_min),mag,(x_size, y_size))
         mask=self.generate_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
         return np.array(region.convert('RGB')), mask
