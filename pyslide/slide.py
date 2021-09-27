@@ -137,24 +137,30 @@ class Slide(OpenSlide):
 
         return self._border
 
-
-    def detect_components(self,down_factor=10,number=None,min_size=None):
+    #Need to do min size in terms of micrometers not pixels
+    def detect_components(self,level_dims=6,num_component=None,min_size=None):
         """
         Find the largest section on the slide
         :param down_factor: 
         :return image: image containing contour around detected section
         :return self._border: [(x1,x2),(y1,y2)] around detected section
         """
-        #f = lambda x: round(x/100)
-        #new_dims=list(map(f,self.dims))
         new_dims=self.level_dimensions[6]
         image=np.array(self.get_thumbnail(self.level_dimensions[6]))
         gray=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
         blur=cv2.bilateralFilter(np.bitwise_not(gray),9,100,100)
         _,thresh=cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         contours,_=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+        if num_component is not None:
+            idx=sorted([(cv2.contourArea(c),i) for i,c in enumerate(contours)])
+            contours=[contours[i] for c, i in idx]
+            contours=contours[-num_component:]
+        if min_size is not None:
+            contours=list(map(lambda x, y: cv2.contourArea(x),contours))
+            contours=[c for c in contours if c>min_area]
         borders=[]
-        components=[] 
+        components=[]
+        image_new=image.copy()
         for c in contours:
             x,y,w,h = cv2.boundingRect(c)
             x_scale=self.dims[0]/new_dims[0]
@@ -164,17 +170,9 @@ class Slide(OpenSlide):
             y1=round(y_scale*y)
             y2=round(y_scale*(y-h))
             self._border=[(x1,x2),(y1,y2)]
-            image=cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
-            components.append(image)
+            image_new=cv2.rectangle(image_new,(x,y),(x+w,y+h),(0,255,0),2)
+            components.append(image_new)
             borders.append([(x1,x2),(y1,y2)])
-        if number is not None
-            components=components[-num:]
-            borders=borders[-num:]
-        if min_size is not None:
-            components=list(map(lambda x, y: cv2.contourArea(x),components))
-            idx=[i for i,c in enumerate(components) if c<min_area]
-            components=components[idx]
-            border=border[idx]
             
         return components, borders 
     
@@ -219,28 +217,18 @@ class Slide(OpenSlide):
             elif isinstance(y,int):
                 y_min=y
                 y_max=y_min+y_size
-        x_size=int(x_size/Slide.MAG_fACTORS[mag])
-        y_size=int(y_size/Slide.MAG_fACTORS[mag])
         if scale_border:
             x_size = Slide.resize_border(x_size, factor, threshold, operator)
             y_size = Slide.resize_border(y_size, factor, threshold, operator)
-        print(y_min)
-        print(y_size)
-        print(x_min)
-        print(x_size)
-        print(x_min+x_size)
-        print(y_min+y_size)
         if (x_min+x_size)>self.dimensions[0]:
             x_size=self.dimensions[0]-x_min
         if (y_min+y_size)>self.dimensions[1]:
-            print('gregory')
             y_size=self.dimensions[1]-y_min
-        print(x_min)
-        print(y_min)
+        x_size=int(x_size/Slide.MAG_fACTORS[mag])
+        y_size=int(y_size/Slide.MAG_fACTORS[mag])
         region=self.read_region((x_min,y_min),mag,(x_size, y_size))
         mask=self.generate_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
-        #return np.array(region.convert('RGB')), mask
-        return region
+        return np.array(region.convert('RGB')), mask
 
     def save(self, path, size=(2000,2000), mask=False):
         """
