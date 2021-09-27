@@ -138,7 +138,7 @@ class Slide(OpenSlide):
         return self._border
 
 
-    def detect_components(self,down_factor=10):
+    def detect_components(self,down_factor=10,number=None,min_size=None):
         """
         Find the largest section on the slide
         :param down_factor: 
@@ -167,9 +167,15 @@ class Slide(OpenSlide):
             image=cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
             components.append(image)
             borders.append([(x1,x2),(y1,y2)])
-        #if largest:
-            #max_c=max(contours, key = cv2.contourArea)
-            #borders=
+        if number is not None
+            components=components[-num:]
+            borders=borders[-num:]
+        if min_size is not None:
+            components=list(map(lambda x, y: cv2.contourArea(x),components))
+            idx=[i for i,c in enumerate(components) if c<min_area]
+            components=components[idx]
+            border=border[idx]
+            
         return components, borders 
     
 
