@@ -260,19 +260,24 @@ class Annotations():
     :param _annotations: dictonary with return files
                       {roi1:[[x1,y1],[x2,y2],...[xn,yn],...roim:[]}
     """
-    def __init__(self, path, source=None,labels=[]):
+    def __init__(self, path, source,labels=None):
         self.paths=path if isinstance(path,list) else [path]
-        #self.source==[None]*len(self.paths)
         self.source=source
         self.labels = labels
-        self._annotations={}
+        self._annotations=self.generate_annotations()
+
+
+    @property
+    def annotations(self):
+        self.encode_keys()
+        return sef._annotations
 
 
     @property
     def class_key(self):
-        self.labels=list(set(self.labels))
-        if self.labels is not None:
-            class_key={l:i for i, l in enumerate(self.labels)}
+        if self.labels is None:
+            self.labels=list(self._annotations.keys())
+        class_key={l:i for i, l in enumerate(self.labels)}
         return class_key
 
 
@@ -293,6 +298,8 @@ class Annotations():
                         self._annotations[k].append(v)
                     else:
                         self._annotations[k]=v
+        if self.labels is not None:
+            self._annotations=self.filter_labels(self.labels)
         return self._annotations
         
 
@@ -312,7 +319,7 @@ class Annotations():
 
     def rename_labels(self, label_names):
         """
-
+       pass
         """
         for k,v in label_names.items():
             self._annotations[v] = self._annotations.pop(k)
@@ -381,13 +388,12 @@ class Annotations():
         with open(path) as json_file:
             j=json.load(json_file)
 
-        classes=list(set([cls['properties']['classification']['name'] for cls
+        classes=list(set([c['properties']['classification']['name'] for c
                           in j]))
-        for i in range(len(classes)):
-            cls=classes[i]
+        for c in classes:
             annotations=[]
             for a in j:
-                if a['properties']['classification']['name']!=cls:
+                if a['properties']['classification']['name']!=c:
                     continue
                 geometry=a['geometry']['type']
                 coordinates=a['geometry']['coordinates']
@@ -414,7 +420,7 @@ class Annotations():
                     pass
                 elif geometry=="Points":
                     pass
-                annotations_dict[i]=annotations
+                annotations_dict[c]=annotations
         return annotations_dict
 
 
