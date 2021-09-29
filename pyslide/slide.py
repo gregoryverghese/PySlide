@@ -260,7 +260,7 @@ class Annotations():
     :param _annotations: dictonary with return files
                       {roi1:[[x1,y1],[x2,y2],...[xn,yn],...roim:[]}
     """
-    def __init__(self, path, source,labels=None):
+    def __init__(self, path, source,labels=None, encode=True):
         self.paths=path if isinstance(path,list) else [path]
         self.source=source
         self.labels = labels
@@ -269,7 +269,8 @@ class Annotations():
 
     @property
     def annotations(self):
-        self.encode_keys()
+        if encode:
+            self.encode_keys()
         return sef._annotations
 
 
@@ -286,10 +287,9 @@ class Annotations():
         Calls appropriate method for file type.
         return: annotations: dictionary of coordinates
         """
-        class_key=self.class_key
+        self._annotations={}
         if not isinstance(self.paths,list):
-            self._paths=[self.paths]
-       
+            self._paths=[self.paths] 
         if self.source is not None:
             for p in self.paths:
                 annotations=getattr(self,'_'+self.source)(p)
@@ -300,6 +300,7 @@ class Annotations():
                         self._annotations[k]=v
         if self.labels is not None:
             self._annotations=self.filter_labels(self.labels)
+        self.labels=self._annotations.keys()
         return self._annotations
         
 
