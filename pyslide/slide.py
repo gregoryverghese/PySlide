@@ -264,14 +264,15 @@ class Annotations():
         self.paths=path if isinstance(path,list) else [path]
         self.source=source
         self.labels = labels
+        self.encode=encode
         self._annotations=self.generate_annotations()
 
 
     @property
     def annotations(self):
-        if encode:
+        if self.encode:
             self.encode_keys()
-        return sef._annotations
+        return self._annotations
 
 
     @property
@@ -300,7 +301,7 @@ class Annotations():
                         self._annotations[k]=v
         if self.labels is not None:
             self._annotations=self.filter_labels(self.labels)
-        self.labels=self._annotations.keys()
+        self.labels=list(self._annotations.keys())
         return self._annotations
         
 
