@@ -260,7 +260,7 @@ class Annotations():
     :param _annotations: dictonary with return files
                       {roi1:[[x1,y1],[x2,y2],...[xn,yn],...roim:[]}
     """
-    def __init__(self, path, source,labels=None, encode=True):
+    def __init__(self, path, source,labels=None, encode=False):
         self.paths=path if isinstance(path,list) else [path]
         self.source=source
         self.labels=labels
@@ -293,6 +293,11 @@ class Annotations():
             self.labels=list(self._annotations.keys())
         class_key={l:i for i, l in enumerate(self.labels)}
         return class_key
+
+    @property
+    def numbers(self):
+        numbers=[len(v) for k, v in self._annotations.items()]
+        return dict(zip(self.labels,numbers))
 
 
     def _generate_annotations(self):
@@ -330,12 +335,13 @@ class Annotations():
         return self._annotations
 
 
-    def rename_labels(self):
+    def rename_labels(self,names):
         """
-       pass
+        pass
         """
-        for k,v in label_names.items():
-            self._annotations[v] = self._annotations.pop(k)
+        for k,v in names.items():
+            self._annotations[v]=self._annotations.pop(k)
+        self.labels=list(self._annotations.keys())        
     
 
     def encode_keys(self):
