@@ -263,17 +263,29 @@ class Annotations():
     def __init__(self, path, source,labels=None, encode=True):
         self.paths=path if isinstance(path,list) else [path]
         self.source=source
-        self.labels = labels
+        self.labels=labels
         self.encode=encode
-        self._annotations=self.generate_annotations()
+        self._annotations=None
+        self._generate_annotations()
 
+    def __repr__(self):
+        numbers=[len(v) for k, v in self._annotations.items()]
+        df=pd.DataFrame({"classes":self.labels,"number":numbers})
+        return str(df)
+
+    @property
+    def keys(self):
+        return list(self.annotations.keys())
+
+    @property
+    def values(self):
+        return list(self.annotations.values())
 
     @property
     def annotations(self):
         if self.encode:
             self.encode_keys()
         return self._annotations
-
 
     @property
     def class_key(self):
@@ -283,7 +295,7 @@ class Annotations():
         return class_key
 
 
-    def generate_annotations(self):
+    def _generate_annotations(self):
         """
         Calls appropriate method for file type.
         return: annotations: dictionary of coordinates
@@ -302,7 +314,6 @@ class Annotations():
         if self.labels is not None:
             self._annotations=self.filter_labels(self.labels)
         self.labels=list(self._annotations.keys())
-        return self._annotations
         
 
     def filter_labels(self, labels):
@@ -319,7 +330,7 @@ class Annotations():
         return self._annotations
 
 
-    def rename_labels(self, label_names):
+    def rename_labels(self):
         """
        pass
         """
@@ -446,8 +457,16 @@ class Annotations():
     def _dataframe(self):
         """
         Parses dataframe with following structure
-        """
-        pass
+        """ 
+        anns_df=pd.read_csv(path)
+        anns_df.fillna('undefined', inplace=True)
+        anns_df.set_index('labels',drop=True,inplace=True)
+        self.labels=list(set(anns_df.index))
+        annotations={l: list(zip(anns_df.loc[l].x,anns_df.loc[l].y)) for l in
+                     self.labels}
+
+        annotations = {self.class_key[k]: v for k,v in annotations.items()}
+        self._annotations=annotations
 
 
     def _csv(self,path):
@@ -473,10 +492,10 @@ class Annotations():
         Returns dataframe of annotations.
         :return :dataframe of annotations
         """
-        key={v:k for k,v in self.class_key.items()}
+        #key={v:k for k,v in self.class_key.items()}
         labels=[[l]*len(self._annotations[l]) for l in self._annotations.keys()]
         labels=chain(*labels)
-        labels=[key[l] for l in labels]
+        #labels=[key[l] for l in labels]
         x_values=[xi[0] for x in list(self._annotations.values()) for xi in x]
         y_values=[yi[1] for y in list(self._annotations.values()) for yi in y]
         df=pd.DataFrame({'labels':labels,'x':x_values,'y':y_values})
