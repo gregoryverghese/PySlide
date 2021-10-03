@@ -327,17 +327,18 @@ class Annotations():
         :param labels: label list to remove
         :return annotations: filtered annotation dictionary
         """
+        self.labels=labels
         keys = list(self._annotations.keys())
         for k in keys:
             if k not in labels:
-                self.labels.remove(k)
                 del self._annotations[k]
         return self._annotations
 
 
     def rename_labels(self,names):
         """
-        pass
+        rename annotation labels
+        :param names: dictionary {current_labels:new_labels}
         """
         for k,v in names.items():
             self._annotations[v]=self._annotations.pop(k)
@@ -345,6 +346,9 @@ class Annotations():
     
 
     def encode_keys(self):
+        """
+        encode labels as integer values
+        """
         self._annotations={self.class_key[k]: v for k,v in self._annotations.items()}
 
 
@@ -403,50 +407,34 @@ class Annotations():
         :param path: json file path
         :return annotations: dictionary of annotations
         """
-        annotations_dict={}
+        annotations={}
         with open(path) as json_file:
             j=json.load(json_file)
 
-        classes=list(set([c['properties']['classification']['name'] for c
-                          in j]))
-        for c in classes:
-            annotations=[]
-            for a in j:
-                if a['properties']['classification']['name']!=c:
-                    continue
-                geometry=a['geometry']['type']
-                coordinates=a['geometry']['coordinates']
-                if geometry=="Polygon":
-                    for a2 in coordinates:
-                        a2=[[int(i[0]),int(i[1])] for i in a2]
-                        annotations.append(a2)
-                elif geometry=="MultiPolygon":
-                    for a2 in coordinates:
-                        for a3 in a2:
-                            a3=[[int(i[0]),int(i[1])] for i in a3]
-                            annotations.append(a3)
-                elif geometry=="LineString":
-                    a2=coordinates
-                    a2=[[int(i[0]),int(i[1])] for i in a2]
-                    annotations.append(a2)
-                elif geometry=="Rectangle":
-                    pass
-                elif geometry=="Ellipse":
-                    pass
-                elif geometry=="Line":
-                    pass
-                elif geometry=="Polyline":
-                    pass
-                elif geometry=="Points":
-                    pass
-                annotations_dict[c]=annotations
-        return annotations_dict
+        for a in j:
+            c=a['properties']['classification']['name']
+            geometry=a['geometry']['type']
+            coordinates=a['geometry']['coordinates']
+            if geometry=="Polygon":
+                for a2 in coordinates:
+                    points=[[int(i[0]),int(i[1])] for i in a2]
+            elif geometry=="MultiPolygon":
+                for a2 in coordinates:
+                    for a3 in a2:
+                        points=[[int(i[0]),int(i[1])] for i in a3]
+            elif geometry=="LineString":
+                a2=coordinates
+                points=[[int(i[0]),int(i[1])] for i in a2]
+            if c in annotations:
+                annotations[c]=annotations[c]+points
+            else:
+                annotations[c]=points
+        return annotations
 
 
     def _json(self,path):
         """
         Parses json file with following structure.
-
         :param path:
         :return annotations: dict of coordinates
         """
