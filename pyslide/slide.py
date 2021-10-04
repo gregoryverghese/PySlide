@@ -39,7 +39,8 @@ class Slide(OpenSlide):
     """
     MAG_fACTORS={0:1,1:2,2:4,3:8,4:16,5:32}
 
-    def __init__(self,filename,mag=0,annotations=None,annotations_path=None):
+    def __init__(self,filename,mag=0,annotations=None,
+                 annotations_path=None,labels=None,source=None):
         super().__init__(filename)
 
         self.mag=mag
@@ -47,7 +48,8 @@ class Slide(OpenSlide):
         self.name=os.path.basename(filename)
         self._border=None
         if annotations_path is not None:
-            self.annotations=self.generate_annotations(annotations_path)
+            self.annotations=Annotations(annotations_path,source=source,
+                                         labels=labels,encode=True)
         else:
             self.annotations=annotations
 
@@ -69,8 +71,12 @@ class Slide(OpenSlide):
         """
         x, y = self.dims[0], self.dims[1]
         slide_mask=np.zeros((y, x), dtype=np.uint8)
-        for k in self.annotations:
-            v = self.annotations[k]
+        self.annotations.encode=True
+        coordinates=self.annotations.annotations
+        for k in coordinates:
+            print(k)
+            v = coordinates[k]
+            print(len(v))
             v = [np.array(a) for a in v]
             cv2.fillPoly(slide_mask, v, color=k+1)
         if size is not None:
@@ -127,7 +133,8 @@ class Slide(OpenSlide):
         if self.annotations is None:
             self._border=[[0,self.dims[0]],[0,self.dims[1]]]
         else:
-            coordinates = list(chain(*list(self.annotations.values())))
+            coordinates=self.annotations.annotations
+            coordinates = list(chain(*list(coordinates.values())))
             coordinates=list(chain(*coordinates))
             f=lambda x: (min(x)-space, max(x)+space)
             self._border=list(map(f, list(zip(*coordinates))))
@@ -285,6 +292,7 @@ class Annotations():
     def annotations(self):
         if self.encode:
             self.encode_keys()
+        self.encode=False
         return self._annotations
 
     @property
@@ -408,24 +416,22 @@ class Annotations():
         annotations={}
         with open(path) as json_file:
             j=json.load(json_file)
-
         for a in j:
             c=a['properties']['classification']['name']
             geometry=a['geometry']['type']
             coordinates=a['geometry']['coordinates']
+            if c not in annotations:
+                annotations[c]=[]
             if geometry=="LineString":
                 points=[[int(i[0]),int(i[1])] for i in a2]
-            if geometry=="Polygon":    
+            elif geometry=="Polygon":    
                 for a2 in coordinates:
                     points=[[int(i[0]),int(i[1])] for i in a2]
             elif geometry=="MultiPolygon":
                 for a2 in coordinates:
                     for a3 in a2:
                         points=[[int(i[0]),int(i[1])] for i in a3]
-            if c in annotations:
-                annotations[c]=annotations[c]+points
-            else:
-                annotations[c]=points
+            annotations[c].append(points)
         return annotations
 
 
