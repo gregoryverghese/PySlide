@@ -372,9 +372,7 @@ class Annotations():
                 coordinates=list(j.iter('Vertex'))
                 coordinates=[(c.attrib['X'],c.attrib['Y']) for c in coordinates]
                 coordinates=[(round(float(c[0])),round(float(c[1]))) for c in coordinates]
-                #annotations[label].append([coordinates])
                 annotations[label]=annotations[label]+[coordinates]
-        #annotations = {self.class_key[k]: v for k,v in annotations.items()}
         return annotations
 
 
@@ -415,16 +413,15 @@ class Annotations():
             c=a['properties']['classification']['name']
             geometry=a['geometry']['type']
             coordinates=a['geometry']['coordinates']
-            if geometry=="Polygon":
+            if geometry=="LineString":
+                points=[[int(i[0]),int(i[1])] for i in a2]
+            if geometry=="Polygon":    
                 for a2 in coordinates:
                     points=[[int(i[0]),int(i[1])] for i in a2]
             elif geometry=="MultiPolygon":
                 for a2 in coordinates:
                     for a3 in a2:
                         points=[[int(i[0]),int(i[1])] for i in a3]
-            elif geometry=="LineString":
-                a2=coordinates
-                points=[[int(i[0]),int(i[1])] for i in a2]
             if c in annotations:
                 annotations[c]=annotations[c]+points
             else:
