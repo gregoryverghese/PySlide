@@ -74,28 +74,12 @@ class Slide(OpenSlide):
         self.annotations.encode=True
         coordinates=self.annotations.annotations
         for k in coordinates:
-            print(k)
             v = coordinates[k]
-            print(len(v))
             v = [np.array(a) for a in v]
             cv2.fillPoly(slide_mask, v, color=k+1)
         if size is not None:
             slide_mask=cv2.resize(slide_mask, size)
         return slide_mask
-
-
-    def generate_annotations(self,path):
-        """
-        Generate annotation object based on json or xml.
-        Considers Qupath and ImageJ software 
-
-        :param: path: path to json or xml annotation files
-            file_type: xml or json
-        :return: self.annotations: dictionary of annotation coordinates
-        """
-        ann_obj=Annotations(path)
-        self.annotations = ann_obj.generate_annotations()
-        return self.annotations
 
 
     @staticmethod
@@ -179,8 +163,7 @@ class Slide(OpenSlide):
             self._border=[(x1,x2),(y1,y2)]
             image_new=cv2.rectangle(image_new,(x,y),(x+w,y+h),(0,255,0),2)
             components.append(image_new)
-            borders.append([(x1,x2),(y1,y2)])
-            
+            borders.append([(x1,x2),(y1,y2)])            
         return components, borders 
     
 
@@ -423,7 +406,7 @@ class Annotations():
             if c not in annotations:
                 annotations[c]=[]
             if geometry=="LineString":
-                points=[[int(i[0]),int(i[1])] for i in a2]
+                points=[[int(i[0]),int(i[1])] for i in coordinates]
             elif geometry=="Polygon":    
                 for a2 in coordinates:
                     points=[[int(i[0]),int(i[1])] for i in a2]
