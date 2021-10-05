@@ -31,11 +31,6 @@ class Patching():
         self.size=size
         self._number=None
         self._patches=[]
-        self._masks=[]
-
-    @property
-    def masks(self):
-        return self._masks
 
     @property
     def patches(self):
@@ -74,7 +69,7 @@ class Patching():
                 yield x, y
 
 
-    def _remove_edge_cases(self,x,y):
+    def _remove_edge_case(self,x,y):
         """
         remove edge cases based on dimensions of patch
         :param x: base x coordinate to test 
@@ -100,7 +95,7 @@ class Patching():
         return remove
 
 
-    def generate_patches(self,step, mode='sparse',mask_flag=False):
+    def generate_patches(self,step, mode='sparse'):
         """
         generate patch coordinates based on mag,step and size
         :param step: integer: step size
@@ -115,37 +110,23 @@ class Patching():
         xmax=self.slide._border[0][1]
         ymin=self.slide._border[1][0]
         ymax=self.slide._border[1][1]
-
         for x, y in self.patching(step,xmin,xmax,ymin,ymax):
             name=self.slide.name+'_'+str(x)+'_'+str(y)
-            if self._remove_edge_cases(x,y):
-                #continue
-                pass
-            self.patches.append({'name':name,'x':x,'y':y})
-            if mask_flag:
-                mask=self.slide.slide_mask[y:y+self.size[0],x:x+self.size[1]]
-                if mode == 'focus':
-                    classes = len(np.unique(mask))
-                    self._masks.append({'x':x, 'y':y, 'classes':classes})
-                    self.focus()
-                else:
-                    self._masks.append({'x':x, 'y':y})
+            if self._remove_edge_case(x,y):
+                continue
+        self._patches.append({'name':name,'x':x,'y':y})
         self._number=len(self._patches)
         return self._number
 
 
-    def focus(self, task='classes'):
-
-        if task=='classes':
-            index=[i for i in range(len(self._patches)) if
-                  self._masks[i][task] >1]
-        elif task=='labels':
-            index=[i for i in range(len(self._patches)) if
-                   self._masks[i][task]!=9]
-
-        self._patches = [self.patches[i] for i in index]
-        self._masks = [self.masks[i] for i in index]
-
+    def focus(self, num=2):    
+        for p in self._patches:
+            x=p['x']
+            y=p['y'] 
+            mask=self.slide.slide_mask[y:y+self.size[0],x:x+self.size[1]]
+            classes = len(np.unique(mask))
+            if classes<num:
+                self._patches.remove(p)
         return len(self._patches)
 
 
@@ -154,8 +135,7 @@ class Patching():
         ratio=y_cnt/float(sum(cnts))
         return ratio>=threshold
 
-
-    #TODO:how do we set a threshold in multisclass
+    """
     def generate_labels(self,threshold=1):
         labels=[]
         for i, (m,x,y) in enumerate(self.extract_masks()):
@@ -163,7 +143,7 @@ class Patching():
             y=cls[cnts==cnts.max()]
             y_cnt=cnts.max()
             if self.__filter(y_cnt,cnts,threshold):
-                self.masks[i]['labels']=y[0]
+                self._patches[i]['labels']=y[0]
                 labels.append(y)
             else:
                 self.masks[i]['labels']=9
@@ -171,19 +151,19 @@ class Patching():
                 labels.append(y)
 
         return np.unique(np.array(labels),return_counts=True)
-
+    
 
     def plotlabeldist(self):
         labels=[self.masks[i]['labels'] for i in range(len(self.masks))]
         return sns.distplot(labels)
-
-
-    #TODO: maybe we don't need .5 - should check
+    """
+    
     def extract_patch(self, x=None, y=None):
-        x_size=int(self.size[0]*self.mag_factor*.5)
-        y_size=int(self.size[1]*self.mag_factor*.5)
-
-        patch=self.slide.read_region((x-x_size,y-y_size), self.mag_level,
+        #if we want x,y coordinate of point to be central
+        #points in read_region (x-x_size,y-y_size)
+        #x_size=int(self.size[0]*self.mag_factor*.5)
+        #y_size=int(self.size[1]*self.mag_factor*.5)
+        patch=self.slide.read_region((x,y), self.mag_level,
                                      (self.size[0],self.size[1]))
         patch=np.array(patch.convert('RGB'))
         return patch
@@ -196,22 +176,24 @@ class Patching():
 
 
     def extract_mask(self, x=None, y=None):
-
-        x_size=int(self.size[0]*self.mag_factor*.5)
-        y_size=int(self.size[1]*self.mag_factor*.5)
-        mask=self.slide.generate_mask()[y-y_size:y+y_size,x-x_size:x+x_size]
+        #if we want x,y coordinate of point to be central
+        #x_size=int(self.size[0]*self.mag_factor*.5)
+        #y_size=int(self.size[1]*self.mag_factor*.5)
+        #[y-y_size:y+y_size,x-x_size:x+x_size]
+        x_size=int(self.size[0]*self.mag_factor)
+        y_size=int(self.size[1]*self.mag_factor)
+        mask=self.slide.generate_mask()[y:y+y_size,x:x+x_size]
         mask=cv2.resize(mask,(self.size[0],self.size[1]))
-
         return mask
 
 
     def extract_masks(self):
-        for m in self._masks:
+        for m in self._patches:
             mask=self.extract_mask(m['x'],m['y'])
             yield mask,m['x'],m['y']
 
 
-        #TODO: how to save individiual patch and mask
+    #TODO: how to save individiual patch and mask
     @staticmethod
     def saveimage(image,path,filename,x=None,y=None):
 
@@ -224,41 +206,23 @@ class Patching():
         elif (x and y) is not None:
              filename=filename+'_'+str(x)+'_'+str(y)+'.png'
              image_path=os.path.join(path,filename)
-        print('image_path',image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         status=cv2.imwrite(image_path,image)
         return status
+    
 
-
-    #TODO fix masks. Currently saving only first mask over and over
     def save(self, path, mask_flag=False):
 
-        patchpath=os.path.join(path,'images')
-        try:
-            os.mkdir(patchpath)
-        except OSError as error:
-            print(error)
-
-        if mask_flag:
-            maskpath=os.path.join(path,'masks')
-            try:
-                os.mkdir(os.path.join(maskpath))
-            except OSError as error:
-                print(error)
-
-            mask_generator=self.extract_masks()
+        patch_path=os.path.join(path,'images')
+        os.makedirs(patchpath,exist_ok=True)
+        filename=self.slide.name
         for patch,x,y in self.extract_patches():
-            #if np.mean(patch[:,:,1])>210:
-                #continue
-            #test=patch[:,:,1]
-
-            #if len(test[test>220])>(0.3*self.size[0]**2):
-                #print('here')
-                #continue
-            patchstatus=self.saveimage(patch,patchpath,self.slide.name,x,y)
-            if mask_flag:
-                mask,x,y=next(mask_generator)
-                maskstatus=self.saveimage(mask,maskpath,self.slide.name,x,y)
+            self.saveimage(patch,patch_path,filename,x,y)
+        if mask_flag:
+            mask_generator=self.extract_masks()
+            maskpath=os.path.join(path,'masks')
+            for mask,x,y in self.extract_masks():
+                self.saveimage(mask,mask_path,filename,x,y)
 
 
 class Stitching():
