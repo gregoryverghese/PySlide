@@ -19,33 +19,32 @@ __email__='gregory.verghese@gmail.com'
 
 
 class Patching():
-
-    MAG_FACTORS={0:1,1:2,2:4,3:8,4:16}
-
-    def __init__(self, slide, annotations=None, size=(256, 256),
-                 mag_level=0,border=None, mode=False):
+    def __init__(self, slide, size, mag_level=0,
+                 border=None, mode=None, step=None):
 
         super().__init__()
         self.slide=slide
         self.mag_level=mag_level
         self.size=size
         self._number=None
+        self.step=size[0] if step is None else step
+        self.mode='sparse' if mode is None else mode
         self._patches=[]
+        self._downsample=int(slide.level_downsamples[mag_level])
+        self.generate_patches(self.step,self.mode)
 
     @property
     def patches(self):
         return self._patches
 
-    @property
-    def mag_factor(self):
-        return Patching.MAG_FACTORS[self.mag_level]
 
     @property
     def config(self):
         config={'name':self.slide.name,
                 'mag':self.mag_level,
                 'size':self.size,
-                'border':self.slide.border,
+                'step':self.step,
+                'border':self.slide._border,
                 'mode':None,
                 'number':self._number}
         return config
@@ -76,8 +75,8 @@ class Patching():
         :param y: base y coordiante to test
         :return remove: boolean remove patch or not
         """
-        x_size=int(self.size[0]*self.mag_factor*.5)
-        y_size=int(self.size[1]*self.mag_factor*.5)
+        x_size=int(self.size[0]*self._downsample)
+        y_size=int(self.size[1]*self._downsample)
         xmin=self.slide._border[0][0]
         xmax=self.slide._border[0][1]
         ymin=self.slide._border[1][0]
@@ -95,7 +94,7 @@ class Patching():
         return remove
 
 
-    def generate_patches(self,step, mode='sparse'):
+    def generate_patches(self, step, mode="Sparse"):
         """
         generate patch coordinates based on mag,step and size
         :param step: integer: step size
@@ -103,9 +102,9 @@ class Patching():
         :param mask_flag: include masks
         :return len(self._patches): Number of patches
         """
+        self.step=step
         self._patches=[]
-        self._masks=[]
-        step=step*self.mag_factor
+        step=step*self._downsample
         xmin=self.slide._border[0][0]
         xmax=self.slide._border[0][1]
         ymin=self.slide._border[1][0]
@@ -114,7 +113,9 @@ class Patching():
             name=self.slide.name+'_'+str(x)+'_'+str(y)
             if self._remove_edge_case(x,y):
                 continue
-        self._patches.append({'name':name,'x':x,'y':y})
+            self._patches.append({'name':name,'x':x,'y':y})
+        if mode=="focus":
+            self.focus()
         self._number=len(self._patches)
         return self._number
 
@@ -180,8 +181,8 @@ class Patching():
         #x_size=int(self.size[0]*self.mag_factor*.5)
         #y_size=int(self.size[1]*self.mag_factor*.5)
         #[y-y_size:y+y_size,x-x_size:x+x_size]
-        x_size=int(self.size[0]*self.mag_factor)
-        y_size=int(self.size[1]*self.mag_factor)
+        x_size=int(self.size[0]*self._downsample)
+        y_size=int(self.size[1]*self._downsample)
         mask=self.slide.generate_mask()[y:y+y_size,x:x+x_size]
         mask=cv2.resize(mask,(self.size[0],self.size[1]))
         return mask
@@ -193,9 +194,8 @@ class Patching():
             yield mask,m['x'],m['y']
 
 
-    #TODO: how to save individiual patch and mask
     @staticmethod
-    def saveimage(image,path,filename,x=None,y=None):
+    def save_image(image,path,filename,x=None,y=None):
 
         if y is None and x is not None:
             raise ValueError('missing y')
@@ -214,15 +214,15 @@ class Patching():
     def save(self, path, mask_flag=False):
 
         patch_path=os.path.join(path,'images')
-        os.makedirs(patchpath,exist_ok=True)
+        os.makedirs(patch_path,exist_ok=True)
         filename=self.slide.name
         for patch,x,y in self.extract_patches():
-            self.saveimage(patch,patch_path,filename,x,y)
+            self.save_image(patch,patch_path,filename,x,y)
         if mask_flag:
             mask_generator=self.extract_masks()
-            maskpath=os.path.join(path,'masks')
+            mask_path=os.path.join(path,'masks')
             for mask,x,y in self.extract_masks():
-                self.saveimage(mask,mask_path,filename,x,y)
+                self.save_image(mask,mask_path,filename,x,y)
 
 
 class Stitching():
