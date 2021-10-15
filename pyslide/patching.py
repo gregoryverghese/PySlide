@@ -30,12 +30,18 @@ class Patching():
         self.step=size[0] if step is None else step
         self.mode='sparse' if mode is None else mode
         self._patches=[]
+        self._labels=[]
         self._downsample=int(slide.level_downsamples[mag_level])
         self.generate_patches(self.step,self.mode)
 
     @property
     def patches(self):
         return self._patches
+
+
+    @property
+    def label(self):
+        return self._labels
 
 
     @property
@@ -136,28 +142,26 @@ class Patching():
         ratio=y_cnt/float(sum(cnts))
         return ratio>=threshold
 
-    """
-    def generate_labels(self,threshold=1):
-        labels=[]
+     
+    def generate_labels(self,threshold=0.5):
         for i, (m,x,y) in enumerate(self.extract_masks()):
             cls,cnts=np.unique(m, return_counts=True)
             y=cls[cnts==cnts.max()]
             y_cnt=cnts.max()
             if self.__filter(y_cnt,cnts,threshold):
                 self._patches[i]['labels']=y[0]
-                labels.append(y)
+                print(y[0])
+                self._labels.append(y)
             else:
-                self.masks[i]['labels']=9
-                #TODO:do we want a labels attribute
-                labels.append(y)
-
+                self._patches[i]['labels']=None
+                self._labels.append(y)
         return np.unique(np.array(labels),return_counts=True)
     
 
     def plotlabeldist(self):
         labels=[self.masks[i]['labels'] for i in range(len(self.masks))]
         return sns.distplot(labels)
-    """
+    
     
     def extract_patch(self, x=None, y=None):
         #if we want x,y coordinate of point to be central
@@ -211,18 +215,25 @@ class Patching():
         return status
     
 
-    def save(self, path, mask_flag=False):
+    def save(self, path, mask_flag=False, label_dir=False, label_csv=False):
 
         patch_path=os.path.join(path,'images')
         os.makedirs(patch_path,exist_ok=True)
         filename=self.slide.name
         for patch,x,y in self.extract_patches():
+            if label_dir:
+                patch_path=os.path.join(path_path,patch['labels'])
             self.save_image(patch,patch_path,filename,x,y)
         if mask_flag:
             mask_generator=self.extract_masks()
             mask_path=os.path.join(path,'masks')
+            if label_dir:
+                patch_path=os.path.join(path_path,patch['labels'])
             for mask,x,y in self.extract_masks():
                 self.save_image(mask,mask_path,filename,x,y)
+        if label_csv:
+            df=pd.DataFrame(self._patches,columns=['names','x','y','labels'])
+            df.to_csv(os.path.join(path,'labels.csv'))
 
 
 class Stitching():
