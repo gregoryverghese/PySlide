@@ -73,10 +73,11 @@ class Slide(OpenSlide):
         slide_mask=np.zeros((y, x), dtype=np.uint8)
         self.annotations.encode=True
         coordinates=self.annotations.annotations
-        for k in coordinates:
+        keys=sorted(list(coordinates.keys()))
+        for k in keys:
             v = coordinates[k]
             v = [np.array(a) for a in v]
-            cv2.fillPoly(slide_mask, v, color=k+1)
+            cv2.fillPoly(slide_mask, v, color=k)
         if size is not None:
             slide_mask=cv2.resize(slide_mask, size)
         return slide_mask
@@ -274,15 +275,18 @@ class Annotations():
     @property
     def annotations(self):
         if self.encode:
-            self.encode_keys()
-        self.encode=False
-        return self._annotations
+            annotations=self.encode_keys()
+            self.encode=False
+        else:
+            annotations=self._annotations
+        return annotations
 
     @property
     def class_key(self):
         if self.labels is None:
             self.labels=list(self._annotations.keys())
-        class_key={l:i for i, l in enumerate(self.labels)}
+        print(self.labels)
+        class_key={l:i+1 for i, l in enumerate(self.labels)}
         return class_key
 
     @property
@@ -309,7 +313,8 @@ class Annotations():
                         self._annotations[k]=v
         if self.labels is not None:
             self._annotations=self.filter_labels(self.labels)
-        self.labels=list(self._annotations.keys())
+        else:
+            self.labels=list(self._annotations.keys())
         
 
     def filter_labels(self, labels):
@@ -340,7 +345,8 @@ class Annotations():
         """
         encode labels as integer values
         """
-        self._annotations={self.class_key[k]: v for k,v in self._annotations.items()}
+        annotations={self.class_key[k]: v for k,v in self._annotations.items()}
+        return annotations
 
 
     def _imagej(self,path):
