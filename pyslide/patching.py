@@ -26,13 +26,14 @@ class Patching():
         self.slide=slide
         self.mag_level=mag_level
         self.size=size
-        self._number=None
         self.step=size[0] if step is None else step
         self.mode='sparse' if mode is None else mode
         self._patches=[]
         self._labels=[]
         self._downsample=int(slide.level_downsamples[mag_level])
-        self.generate_patches(self.step,self.mode)
+        num=self.generate_patches(self.step,self.mode)
+        print('num patches: {}'.format(num))
+        self._number=len(self._patches)
 
     @property
     def patches(self):
@@ -83,10 +84,10 @@ class Patching():
         """
         x_size=int(self.size[0]*self._downsample)
         y_size=int(self.size[1]*self._downsample)
-        xmin=self.slide._border[0][0]
-        xmax=self.slide._border[0][1]
-        ymin=self.slide._border[1][0]
-        ymax=self.slide._border[1][1]
+        xmin=int(self.slide._border[0][0])
+        xmax=int(self.slide._border[0][1])
+        ymin=int(self.slide._border[1][0])
+        ymax=int(self.slide._border[1][1])
         remove=False
 
         if x+x_size>xmax:
@@ -111,10 +112,10 @@ class Patching():
         self.step=step
         self._patches=[]
         step=step*self._downsample
-        xmin=self.slide._border[0][0]
-        xmax=self.slide._border[0][1]
-        ymin=self.slide._border[1][0]
-        ymax=self.slide._border[1][1]
+        xmin=int(self.slide._border[0][0])
+        xmax=int(self.slide._border[0][1])
+        ymin=int(self.slide._border[1][0])
+        ymax=int(self.slide._border[1][1])
         for x, y in self.patching(step,xmin,xmax,ymin,ymax):
             name=self.slide.name+'_'+str(x)+'_'+str(y)
             if self._remove_edge_case(x,y):
@@ -161,6 +162,24 @@ class Patching():
     def plotlabeldist(self):
         labels=[self.masks[i]['labels'] for i in range(len(self.masks))]
         return sns.distplot(labels)
+
+
+    def filter_patches(self,threshold,channel=None):
+        num_b4=self._number
+        if channel is not None:
+            for i, (p,_,_) in enumerate(self.extract_patches()):
+                if np.mean(p[:,:,channel])>threshold:
+                    self._patches.pop(i)
+        elif channel is None:
+            for i, (p,_,_) in enumerate(self.extract_patches()):
+                if np.mean(p)>threshold:
+                    print(self._patches[i]['name'])
+                    self._patches.pop(i)
+        removed=num_b4-len(self._patches)
+        print('Num removed: {}'.format(removed))
+        print('Remaining:{}'.format(len(self._patches)))
+        return removed
+                
     
     
     def extract_patch(self, x=None, y=None):
@@ -227,6 +246,7 @@ class Patching():
         if mask_flag:
             mask_generator=self.extract_masks()
             mask_path=os.path.join(path,'masks')
+            os.makedirs(mask_path,exist_ok=True)
             if label_dir:
                 patch_path=os.path.join(path_path,patch['labels'])
             for mask,x,y in self.extract_masks():
@@ -312,7 +332,7 @@ class Stitching():
         step=self.step*self.mag_factor
         xmin,xmax=self.border[0][0],self.border[0][1]
         ymin,ymax=self.border[1][0],self.border[1][1]
-        z=2048*self.mag_factor
+        z=self.step*self.mag_factor
         xnew=(xmax+z-xmin)/self.mag_factor
         ynew=(ymax+z-ymin)/self.mag_factor
         canvas=np.zeros((int(ynew),int(xnew),3))
