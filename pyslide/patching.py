@@ -166,15 +166,17 @@ class Patching():
 
     def filter_patches(self,threshold,channel=None):
         num_b4=self._number
+        patches=self._patches.copy()
         if channel is not None:
-            for i, (p,_,_) in enumerate(self.extract_patches()):
-                if np.mean(p[:,:,channel])>threshold:
-                    self._patches.pop(i)
+            for patch,p in self.extract_patches():
+                if np.mean(patch[:,:,channel])>threshold:
+                    self._patches.remove(p)
         elif channel is None:
-            for i, (p,_,_) in enumerate(self.extract_patches()):
-                if np.mean(p)>threshold:
-                    print(self._patches[i]['name'])
-                    self._patches.pop(i)
+            for patch,p in self.extract_patches():
+                if np.mean(patch)>threshold:
+                    patches.remove(p)
+                    continue
+        self._patches=patches.copy()
         removed=num_b4-len(self._patches)
         print('Num removed: {}'.format(removed))
         print('Remaining:{}'.format(len(self._patches)))
@@ -196,7 +198,7 @@ class Patching():
     def extract_patches(self):
         for p in self._patches:
             patch=self.extract_patch(p['x'],p['y'])
-            yield patch,p['x'],p['y']
+            yield patch, p
 
 
     def extract_mask(self, x=None, y=None):
@@ -239,10 +241,10 @@ class Patching():
         patch_path=os.path.join(path,'images')
         os.makedirs(patch_path,exist_ok=True)
         filename=self.slide.name
-        for patch,x,y in self.extract_patches():
+        for patch,p in self.extract_patches():
             if label_dir:
                 patch_path=os.path.join(path_path,patch['labels'])
-            self.save_image(patch,patch_path,filename,x,y)
+            self.save_image(patch,patch_path,filename,p['x'],p['y'])
         if mask_flag:
             mask_generator=self.extract_masks()
             mask_path=os.path.join(path,'masks')
