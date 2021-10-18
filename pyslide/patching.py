@@ -33,7 +33,11 @@ class Patching():
         self._downsample=int(slide.level_downsamples[mag_level])
         num=self.generate_patches(self.step,self.mode)
         print('num patches: {}'.format(num))
-        self._number=len(self._patches)
+    
+    @property
+    def number(self):
+        return len(self._patches)
+
 
     @property
     def patches(self):
