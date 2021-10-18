@@ -149,18 +149,25 @@ class Patching():
 
      
     def generate_labels(self,threshold=0.5):
-        for i, (m,x,y) in enumerate(self.extract_masks()):
-            cls,cnts=np.unique(m, return_counts=True)
-            y=cls[cnts==cnts.max()]
-            y_cnt=cnts.max()
-            if self.__filter(y_cnt,cnts,threshold):
-                self._patches[i]['labels']=y[0]
-                print(y[0])
-                self._labels.append(y)
+        for i, (mask,_) in enumerate(self.extract_masks()):
+            cls,cnts=np.unique(mask, return_counts=True)
+            cls,cnts=(list(cls),list(cnts))
+            if len(cls)>1:
+                cnts.pop(cls.index(0))
+                cls.remove(0)
+            y=cls[cls.index(max(cls))]
+            y_cnt=max(cnts)
+            if len(cls)>1:
+                if self.__filter(y_cnt,cnts,threshold):
+                    self._patches[i]['labels']=y
+                    self._labels.append(y)
+                else:
+                    self._patches[i]['labels']=None
+                    self._labels.append(None)
             else:
-                self._patches[i]['labels']=None
+                self._patches[i]['labels']=y
                 self._labels.append(y)
-        return np.unique(np.array(labels),return_counts=True)
+        return np.unique(np.array(self._labels),return_counts=True)
     
 
     def plotlabeldist(self):
@@ -220,7 +227,7 @@ class Patching():
     def extract_masks(self):
         for m in self._patches:
             mask=self.extract_mask(m['x'],m['y'])
-            yield mask,m['x'],m['y']
+            yield mask,m
 
 
     @staticmethod
@@ -255,8 +262,8 @@ class Patching():
             os.makedirs(mask_path,exist_ok=True)
             if label_dir:
                 patch_path=os.path.join(path_path,patch['labels'])
-            for mask,x,y in self.extract_masks():
-                self.save_image(mask,mask_path,filename,x,y)
+            for mask,m in self.extract_masks():
+                self.save_image(mask,mask_path,filename,m['x'],m['y'])
         if label_csv:
             df=pd.DataFrame(self._patches,columns=['names','x','y','labels'])
             df.to_csv(os.path.join(path,'labels.csv'))
