@@ -12,6 +12,7 @@ import seaborn as sns
 from itertools import chain
 import operator as op
 from pyslide.utilities import mask2rgb
+from pyslide.exceptions import MissingPatches
 
 
 __author__='Gregory Verghese'
@@ -278,8 +279,9 @@ class Stitching():
 
         self.patch_path=patch_path
         patch_files=glob.glob(os.path.join(self.patch_path,'*'))
-        print('found {} patches'.format(len(patch_files)))
-        self.fext=patch_files[0].split('.')[-1]
+        self.patch_files=[os.path.basename(p) for p in patch_files]
+        print('found {} patches'.format(len(self.patch_files)))
+        self.fext=self.patch_files[0].split('.')[-1]
         self.slide=slide
         self.coords=self._get_coords()
 
@@ -306,12 +308,12 @@ class Stitching():
             self.mag_level=patching.mag_level
         else:
             self.mag_level=mag_level
-
+        print(self.patch_files)
         self._completeness()
 
 
     @property
-    def step
+    def step(self):
         self._step=self._get_step()
         return self._step
 
@@ -349,10 +351,10 @@ class Stitching():
 
     def _completeness(self):
         missing_patches=[]
-        for p in patches:
-            p=cv2.imread(os.path.join(self.patch_path,filename))
-            if p is None:
-                missing_patches.append(filename)
+        for (p_name,_,_) in self._patches():
+            print(p_name)
+            if p_name not in self.patch_files:
+                missing_patches.append(p_name)
         if len(missing_patches)>0:        
             raise MissingPatches(missing_patches)
 
@@ -364,20 +366,48 @@ class Stitching():
         for x in range(xmin,xmax+step,step):
             for y in range(ymin,ymax+step,step):
                 filename=self.name+'_'+str(x)+'_'+str(y)+'.'+self.fext
-                yield filename
+                yield filename,x,y
 
 
 
     def stitch(self,size=None):
-        xmin=self.border[0][0]
-        ymin=self.border[1][0]
+        xmin,xmax=self.border[0][0],self.border[0][1]
+        ymin,ymax=self.border[1][0],self.border[1][1]
         z=self.step*self.mag_factor
         xnew=(xmax+z-xmin)/self.mag_factor
         ynew=(ymax+z-ymin)/self.mag_factor
         canvas=np.zeros((int(ynew),int(xnew),3))
-        for filename in _patches:
+        
+        #TODO: move into it's own function
+        if size is not None:
+            max_x=int((size[0]/len(self.patch_files))+10)
+            max_y=int((size[1]/len(self.patch_files))+10)
+            print(max_x,max_y)
+            multiples_x = [len(self.patch_files) * i for i in range(max_x)]
+            multiples_y = [len(self.patch_files) * i for i in range(max_y)]
+            print(multiples_x)
+            fx=lambda x: abs(size[0]-x)
+            fy=lambda y: abs(size[1]-y)
+            x_diff = list(map(fx, multiples_x))
+            y_diff = list(map(fy, multiples_y))
+            xnew = multiples_x[x_diff.index(min(x_diff))]
+            ynew = multiples_y[y_diff.index(min(y_diff))]
+            print(xnew,ynew)
+            x_downsample=int(xnew/len(self.patch_files))
+            y_downsample=int(ynew/len(self.patch_files))
+            print(x_downsample,y_downsample)
+            xmin=xmin/x_downsample
+            ymin=ymin/y_downsample
+        canvas=np.zeros((int(ynew),int(xnew),3))
+
+        for filename,x,y in self._patches():
             p=cv2.imread(os.path.join(self.patch_path,filename))
-            xsize,ysize,_=p.shape
+            p=cv2.resize(p,(x_downsample,y_downsample))
+            print(x,y,xmin,ymin)
+            if size is not None:
+                x=x/x_downsample
+                y=y/y_downsample
+            print(x,y,xmin,ymin)
             xnew=int((x-xmin)/self.mag_factor)
             ynew=int((y-ymin)/self.mag_factor)
             canvas[ynew:ynew+ysize,xnew:xnew+xsize,:]=p
