@@ -271,7 +271,7 @@ class Patching():
 
 class Stitching():
 
-    MAG_FACTORS={0:1,1:2,2:4,3:8,4:16}
+    MAG_FACTORS={0:1,1:2,2:4,3:8,4:16,5:32,5:64}
 
     def __init__(self,patch_path,slide=None,patching=None,name=None,
              step=None,border=None,mag_level=0):
@@ -283,12 +283,12 @@ class Stitching():
         self.slide=slide
         self.coords=self._get_coords()
 
-        if patching is not None:
+        if name is not None:
+            self.name=name
+        elif patching is not None:
             self.name=self.patching.slide.name
         elif slide is not None:
             self.name=self.slide.name
-        elif name is not None:
-            self.name=name
         else:
             self.name='pyslide_wsi'
 
@@ -307,13 +307,19 @@ class Stitching():
         else:
             self.mag_level=mag_level
 
-        self.step=self._get_step() if step is None else step
+        self._completeness()
+
+
+    @property
+    def step
+        self._step=self._get_step()
+        return self._step
 
 
     @property
     def mag_factor(self):
          return Stitching.MAG_FACTORS[self.mag_level]
-
+    
 
     def _get_coords(self):
         patch_files=glob.glob(os.path.join(self.patch_path,'*'))
@@ -341,21 +347,38 @@ class Stitching():
         return int(step/self.mag_factor)
 
 
-    def stitch(self,size=None):
+    def _completeness(self):
+        missing_patches=[]
+        for p in patches:
+            p=cv2.imread(os.path.join(self.patch_path,filename))
+            if p is None:
+                missing_patches.append(filename)
+        if len(missing_patches)>0:        
+            raise MissingPatches(missing_patches)
+
+
+    def _patches(self):
         step=self.step*self.mag_factor
         xmin,xmax=self.border[0][0],self.border[0][1]
         ymin,ymax=self.border[1][0],self.border[1][1]
+        for x in range(xmin,xmax+step,step):
+            for y in range(ymin,ymax+step,step):
+                filename=self.name+'_'+str(x)+'_'+str(y)+'.'+self.fext
+                yield filename
+
+
+
+    def stitch(self,size=None):
+        xmin=self.border[0][0]
+        ymin=self.border[1][0]
         z=self.step*self.mag_factor
         xnew=(xmax+z-xmin)/self.mag_factor
         ynew=(ymax+z-ymin)/self.mag_factor
         canvas=np.zeros((int(ynew),int(xnew),3))
-        step=self.step*self.mag_factor
-        for x in range(xmin,xmax+step,step):
-            for y in range(ymin,ymax+step,step):
-                filename=self.name+'_'+str(x)+'_'+str(y)+'.'+self.fext
-                p=cv2.imread(os.path.join(self.patch_path,filename))
-                xsize,ysize,_=p.shape
-                xnew=int((x-xmin)/self.mag_factor)
-                ynew=int((y-ymin)/self.mag_factor)
-                canvas[ynew:ynew+ysize,xnew:xnew+xsize,:]=p
+        for filename in _patches:
+            p=cv2.imread(os.path.join(self.patch_path,filename))
+            xsize,ysize,_=p.shape
+            xnew=int((x-xmin)/self.mag_factor)
+            ynew=int((y-ymin)/self.mag_factor)
+            canvas[ynew:ynew+ysize,xnew:xnew+xsize,:]=p
         return canvas.astype(np.uint8)
