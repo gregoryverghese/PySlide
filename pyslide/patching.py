@@ -132,7 +132,12 @@ class Patching():
         return self._number
 
 
-    def focus(self, num=2):    
+    def focus(self, num=2):
+        """
+        remove patches with no classes
+        :param num: number of classes required
+        :return len(self._patches): number of patches
+        """
         for p in self._patches:
             x=p['x']
             y=p['y'] 
@@ -145,11 +150,26 @@ class Patching():
 
     @staticmethod
     def __filter(y_cnt,cnts,threshold):
+        """
+        check proportion of class count
+        :param y_cnt: pixel count of class
+        :param cnts: total number of pixels
+        :param threshold: threshold proportion
+        :return boolean if class count > threshold
+        """
         ratio=y_cnt/float(sum(cnts))
         return ratio>=threshold
+    
 
      
     def generate_labels(self,threshold=0.5):
+        """
+        generate class label for patches based on 
+        pixel-level annotations
+        :param threshold: threshold proportion
+        :return classes and count
+        """
+
         for i, (mask,_) in enumerate(self.extract_masks()):
             cls,cnts=np.unique(mask, return_counts=True)
             cls,cnts=(list(cls),list(cnts))
