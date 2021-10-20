@@ -345,7 +345,6 @@ class Stitching():
         self.patch_path=patch_path
         patch_files=glob.glob(os.path.join(self.patch_path,'*'))
         self.patch_files=[os.path.basename(p) for p in patch_files]
-        print('found {} patches'.format(len(self.patch_files)))
         self.fext=self.patch_files[0].split('.')[-1]
         self.slide=slide
         self.coords=self._get_coords()
@@ -355,26 +354,35 @@ class Stitching():
             self.name=name
         elif patching is not None:
             self.name=self.patching.slide.name
-        elif slide is not None:
-            self.name=self.slide.name
         else:
-            self.name='pyslide_wsi'
+            raise TypeError("missing name")
 
-        if border is not None:
-            self.border=border
-        elif patching is not None:
+        if patching is not None:
             self.border=patching.slide.border
-        elif slide is not None:
-            self.border=slide.border
         else:
             self.border=self._get_border()
-        print('border',self.border)
-        print('step',self.step)
+ 
         if patching is not None:
             self.mag_level=patching.mag_level
-        else:
+        elif mag_level is not None:
             self.mag_level=mag_level
+
         self._completeness()
+        print(self.config)
+        
+
+    @property
+    def config(self):
+        config={'name':self.name,
+                'mag':self.mag_level,
+                'step':self.step,
+                'border':self.border
+                'patches':len(self.patch_files}
+        return config
+
+
+    def __repr__(self):
+        return str(self.config)
 
 
     @property
@@ -387,8 +395,12 @@ class Stitching():
     def mag_factor(self):
          return Stitching.MAG_FACTORS[self.mag_level]
     
-
+    #TODO: check required coordinates according to parameters
     def _get_coords(self):
+        """
+        return coordinates of patches based on patch filesnames
+        :return self._coords: list [(x1,y1),(x2,y2), ..., (xn,yn)]
+        """
         patch_files=glob.glob(os.path.join(self.patch_path,'*'))
         coords=[(int(f.split('_')[-2:][0]),int(f.split('_')[-2:][1][:-4]))
                 for f in patch_files]
@@ -398,6 +410,10 @@ class Stitching():
 
 
     def _get_border(self):
+        """
+        calculate border based on coordinate maxima and minima
+        :return [[xmin,xmax],[ymin,ymax]]
+        """
         coords=self._get_coords()
         xmax=max([c[0] for c in coords])
         xmin=min([c[0] for c in coords])
@@ -408,6 +424,10 @@ class Stitching():
 
 
     def _get_step(self):
+        """
+        calculate step based on patch filenames
+        :return int(step/self.mag_factor)
+        """
         coords=self._get_coords()
         xs=[c[0] for c in coords]
         step=min([abs(x1-x2) for x1, x2 in zip(xs, xs[1:]) if abs(x1-x2)!=0])
@@ -415,6 +435,11 @@ class Stitching():
 
 
     def _completeness(self):
+        """
+        check patch set is complete to stitch entire image
+        based on the coordinates. Raises MissingPatches error
+        if missing
+        """
         missing_patches=[]
         for (p_name,_,_) in self._patches():
             if p_name not in self.patch_files:
@@ -424,6 +449,9 @@ class Stitching():
 
 
     def _patches(self):
+        """
+        return patches metadata (name,(x,y))
+        """
         step=self.step*self.mag_factor
         xmin,xmax=self.border[0][0],self.border[0][1]
         ymin,ymax=self.border[1][0],self.border[1][1]
@@ -435,6 +463,12 @@ class Stitching():
 
 
     def stitch(self,size=None):
+        """
+        stitches patches together to create entire
+        slide representation. Size argument 
+        determnines image size
+        :param size: (x_size,y_size)
+        """
         xmin,xmax=self.border[0][0],self.border[0][1]
         ymin,ymax=self.border[1][0],self.border[1][1]
         z=self.step*self.mag_factor
