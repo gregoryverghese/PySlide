@@ -304,6 +304,7 @@ class Stitching():
         self.fext=self.patch_files[0].split('.')[-1]
         self.slide=slide
         self.coords=self._get_coords()
+        self.mag_level=mag_level
 
         if name is not None:
             self.name=name
@@ -323,12 +324,11 @@ class Stitching():
         else:
             self.border=self._get_border()
         print('border',self.border)
-
+        print('step',self.step)
         if patching is not None:
             self.mag_level=patching.mag_level
         else:
             self.mag_level=mag_level
-        print(self.patch_files)
         self._completeness()
 
 
@@ -372,7 +372,6 @@ class Stitching():
     def _completeness(self):
         missing_patches=[]
         for (p_name,_,_) in self._patches():
-            print(p_name)
             if p_name not in self.patch_files:
                 missing_patches.append(p_name)
         if len(missing_patches)>0:        
@@ -383,8 +382,8 @@ class Stitching():
         step=self.step*self.mag_factor
         xmin,xmax=self.border[0][0],self.border[0][1]
         ymin,ymax=self.border[1][0],self.border[1][1]
-        for x in range(xmin,xmax+step,step):
-            for y in range(ymin,ymax+step,step):
+        for i,x in enumerate(range(xmin,xmax+step,step)):
+            for j,y in enumerate(range(ymin,ymax+step,step)):
                 filename=self.name+'_'+str(x)+'_'+str(y)+'.'+self.fext
                 yield filename,x,y
 
@@ -397,38 +396,21 @@ class Stitching():
         xnew=(xmax+z-xmin)/self.mag_factor
         ynew=(ymax+z-ymin)/self.mag_factor
         canvas=np.zeros((int(ynew),int(xnew),3))
-        
-        #TODO: move into it's own function
+         
         if size is not None:
-            max_x=int((size[0]/len(self.patch_files))+10)
-            max_y=int((size[1]/len(self.patch_files))+10)
-            print(max_x,max_y)
-            multiples_x = [len(self.patch_files) * i for i in range(max_x)]
-            multiples_y = [len(self.patch_files) * i for i in range(max_y)]
-            print(multiples_x)
-            fx=lambda x: abs(size[0]-x)
-            fy=lambda y: abs(size[1]-y)
-            x_diff = list(map(fx, multiples_x))
-            y_diff = list(map(fy, multiples_y))
-            xnew = multiples_x[x_diff.index(min(x_diff))]
-            ynew = multiples_y[y_diff.index(min(y_diff))]
-            print(xnew,ynew)
-            x_downsample=int(xnew/len(self.patch_files))
-            y_downsample=int(ynew/len(self.patch_files))
-            print(x_downsample,y_downsample)
-            xmin=xmin/x_downsample
-            ymin=ymin/y_downsample
-        canvas=np.zeros((int(ynew),int(xnew),3))
-
+            x_num=(xmax-xmin)/(1024*self.mag_factor)+1
+            y_num=(ymax-ymin)/(1024*self.mag_factor)+1
+            xdim_new=(int((size[0]/x_num))+1)*x_num
+            ydim_new=(int((size[1]/y_num))+1)*y_num
+            p_xsize=int(xdim_new/x_num)
+            p_ysize=int(ydim_new/y_num)
+            
+        canvas=np.zeros((int(ydim_new),int(xdim_new),3))
         for filename,x,y in self._patches():
             p=cv2.imread(os.path.join(self.patch_path,filename))
-            p=cv2.resize(p,(x_downsample,y_downsample))
-            print(x,y,xmin,ymin)
             if size is not None:
-                x=x/x_downsample
-                y=y/y_downsample
-            print(x,y,xmin,ymin)
-            xnew=int((x-xmin)/self.mag_factor)
-            ynew=int((y-ymin)/self.mag_factor)
-            canvas[ynew:ynew+ysize,xnew:xnew+xsize,:]=p
+                p=cv2.resize(p,(p_xsize,p_ysize))
+                x=int(((x-xmin)/(1024*self.mag_factor))*p_xsize)
+                y=int(((y-ymin)/(1024*self.mag_factor))*p_ysize)
+            canvas[y:y+p_ysize,x:x+p_xsize,:]=p
         return canvas.astype(np.uint8)
