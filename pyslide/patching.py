@@ -192,11 +192,21 @@ class Patching():
     
 
     def plotlabeldist(self):
+        """
+        plot label distribution
+        :return sns.distplot for classes
+        """
         labels=[self.masks[i]['labels'] for i in range(len(self.masks))]
         return sns.distplot(labels)
 
 
     def filter_patches(self,threshold,channel=None):
+        """
+        filter patches based on pixel intensity
+        :param threshold: intesnity threshold value
+        :param channel: channel index
+        :return removed: number of removed
+        """
         num_b4=self._number
         patches=self._patches.copy()
         if channel is not None:
@@ -217,6 +227,12 @@ class Patching():
     
     
     def extract_patch(self, x=None, y=None):
+        """
+        extract individual patch from WSI
+        :param x: int x coordinate
+        :param y: int y coodinate
+        :return patch: ndarray patch
+        """
         #if we want x,y coordinate of point to be central
         #points in read_region (x-x_size,y-y_size)
         #x_size=int(self.size[0]*self.mag_factor*.5)
@@ -228,12 +244,18 @@ class Patching():
 
 
     def extract_patches(self):
+        """
+        generator to extract all patches
+        :yield patch: ndarray patch
+        :yield p: patch dict metadata
+        """
         for p in self._patches:
             patch=self.extract_patch(p['x'],p['y'])
             yield patch, p
 
 
     def extract_mask(self, x=None, y=None):
+
         #if we want x,y coordinate of point to be central
         #x_size=int(self.size[0]*self.mag_factor*.5)
         #y_size=int(self.size[1]*self.mag_factor*.5)
@@ -398,8 +420,8 @@ class Stitching():
         canvas=np.zeros((int(ynew),int(xnew),3))
          
         if size is not None:
-            x_num=(xmax-xmin)/(1024*self.mag_factor)+1
-            y_num=(ymax-ymin)/(1024*self.mag_factor)+1
+            x_num=(xmax-xmin)/(self.step*self.mag_factor)+1
+            y_num=(ymax-ymin)/(self.step*self.mag_factor)+1
             xdim_new=(int((size[0]/x_num))+1)*x_num
             ydim_new=(int((size[1]/y_num))+1)*y_num
             p_xsize=int(xdim_new/x_num)
@@ -410,7 +432,7 @@ class Stitching():
             p=cv2.imread(os.path.join(self.patch_path,filename))
             if size is not None:
                 p=cv2.resize(p,(p_xsize,p_ysize))
-                x=int(((x-xmin)/(1024*self.mag_factor))*p_xsize)
-                y=int(((y-ymin)/(1024*self.mag_factor))*p_ysize)
+                x=int(((x-xmin)/(self.step*self.mag_factor))*p_xsize)
+                y=int(((y-ymin)/(self.step*self.mag_factor))*p_ysize)
             canvas[y:y+p_ysize,x:x+p_xsize,:]=p
         return canvas.astype(np.uint8)
