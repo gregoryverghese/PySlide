@@ -34,23 +34,22 @@ def calculate_std_mean(patch_files,patch_path):
 
 
 
-def calculate_weights(mask_files,num_cls,mask_path=None):
+def calculate_weights(mask_path,num_cls):
 
     if mask_path is not None:
-        mask_files = glob.glob(os.path.join(maskPath,'*'))
-    total = {c:0 for c in range(numClasses)}
+        mask_files = glob.glob(os.path.join(mask_path,'*'))
+    cls_nums = {c:0 for c in range(num_cls)}
     for f in mask_files:
         mask = cv2.imread(f)
         pixels = mask.reshape(-1)
         classes = np.unique(pixels, return_counts=True)
         pixelDict = dict(list(zip(*classes)))     
         for k, v in pixelDict.items():
-            total[k] = total[k] + v 
-    if numClasses==2:
-        weight = total[0]/total[1]
-    else:
-        weight = [1/v for v in list(total.values())]
-    return weight
+            cls_nums[k] = cls_nums[k] + v
+    total = sum(list(cls_nums.values()))
+    weights = [v/total for v in list(cls_nums.values())]
+    weights = [1/w for w in weights]
+    return weights
     
 
 
