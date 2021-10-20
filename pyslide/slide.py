@@ -285,7 +285,6 @@ class Annotations():
     def class_key(self):
         if self.labels is None:
             self.labels=list(self._annotations.keys())
-        print(self.labels)
         class_key={l:i+1 for i, l in enumerate(self.labels)}
         return class_key
 
