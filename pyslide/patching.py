@@ -255,7 +255,12 @@ class Patching():
 
 
     def extract_mask(self, x=None, y=None):
-
+        """
+        extract binary mask corresponding to patch
+        from slide_mask
+        :param x: int x coordinate
+        :param y: int y coordinate
+        """
         #if we want x,y coordinate of point to be central
         #x_size=int(self.size[0]*self.mag_factor*.5)
         #y_size=int(self.size[1]*self.mag_factor*.5)
@@ -268,6 +273,11 @@ class Patching():
 
 
     def extract_masks(self):
+        """
+        extract all masks
+        :yield mask: ndarray mask
+        :yield m: mask dict metadata
+        """
         for m in self._patches:
             mask=self.extract_mask(m['x'],m['y'])
             yield mask,m
@@ -275,7 +285,14 @@ class Patching():
 
     @staticmethod
     def save_image(image,path,filename,x=None,y=None):
-
+        """
+        save patch
+        :param image: ndarray patch
+        :param path: path to save
+        :param filename: str filename
+        :param x: int x coordindate for filename
+        :param y: int y coordinate for filename
+        """
         if y is None and x is not None:
             raise ValueError('missing y')
         elif x is None and y is not None:
@@ -291,7 +308,13 @@ class Patching():
     
 
     def save(self, path, mask_flag=False, label_dir=False, label_csv=False):
-
+        """
+        object save method. saves down all patches
+        :param path: save path
+        :param masK_flag: boolean to save masks
+        :param label_dir: label directory
+        :param label_csv: boolean to save labels in csv
+        """
         patch_path=os.path.join(path,'images')
         os.makedirs(patch_path,exist_ok=True)
         filename=self.slide.name
