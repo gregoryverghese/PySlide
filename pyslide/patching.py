@@ -12,7 +12,7 @@ import seaborn as sns
 from itertools import chain
 import operator as op
 from pyslide.utilities import mask2rgb
-from pyslide.exceptions import MissingPatches
+from pyslide.exceptions import StitchingMissingPatches
 
 
 __author__='Gregory Verghese'
@@ -161,7 +161,8 @@ class Patching():
         return ratio>=threshold
     
 
-     
+    #TODO: how to treat labels that don't pass
+    #threshold test
     def generate_labels(self,threshold=0.5):
         """
         generate class label for patches based on 
@@ -183,11 +184,12 @@ class Patching():
                     self._patches[i]['labels']=y
                     self._labels.append(y)
                 else:
-                    self._patches[i]['labels']=None
-                    self._labels.append(None)
+                    self._patches[i]['labels']=99999999
+                    self._labels.append(99999999)
             else:
                 self._patches[i]['labels']=y
                 self._labels.append(y)
+        
         return np.unique(np.array(self._labels),return_counts=True)
     
 
@@ -196,8 +198,9 @@ class Patching():
         plot label distribution
         :return sns.distplot for classes
         """
-        labels=[self.masks[i]['labels'] for i in range(len(self.masks))]
-        return sns.distplot(labels)
+        labels=[self._patches[i]['labels'] for i in range(len(self._patches))]
+        cls,cnts=np.unique(np.array(self._labels),return_counts=True)
+        return sns.barplot(x=cls,y=cnts)
 
 
     def filter_patches(self,threshold,channel=None):
@@ -376,8 +379,8 @@ class Stitching():
         config={'name':self.name,
                 'mag':self.mag_level,
                 'step':self.step,
-                'border':self.border
-                'patches':len(self.patch_files}
+                'border':self.border,
+                'patches':len(self.patch_files)}
         return config
 
 
@@ -445,7 +448,7 @@ class Stitching():
             if p_name not in self.patch_files:
                 missing_patches.append(p_name)
         if len(missing_patches)>0:        
-            raise MissingPatches(missing_patches)
+            raise StitchingMissingPatches(missing_patches)
 
 
     def _patches(self):
