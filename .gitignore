@@ -9,6 +9,10 @@
 *.json
 *.xml
 *__pycache__
+*data
+*csv
+*xml
+*json
 
 #scripts
 scrapbook.py
