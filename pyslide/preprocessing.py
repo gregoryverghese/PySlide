@@ -6,28 +6,43 @@ import numpy as np
 
 
 
-def calculate_std_mean(patch_path):
-
+def calculate_std_mean(patch_path, channel=True, norm=True):
+    """
+    returns standard deviation and mean of patches
+    :param patch_path: path to patches
+    :param channel: boolean default value True
+    :param norm: normalize values 0-255->0-1
+    :return mean: list of channel means
+    :return std: list of channel std
+    """
     if patch_path is not None:
         patches = glob.glob(os.path.join(patch_path,'*'))
     shape = cv2.imread(patches[0]).shape
     channels = shape[-1]
     chnl_values = np.zeros((channels))
-    print(chnl_values)
     chnl_values_sqrt = np.zeros((channels))
     pixel_nums = len(patches)*shape[0]*shape[1]
     print('total number pixels: {}'.format(pixel_nums))
+    if not channel:
+        axis=(0,1,2)
+    else:
+        axis=(0,1)
+    
+    if not norm:
+        divisor=1.0
+    else:
+        divisor=255.0
 
     for path in patches:
         patch = cv2.imread(path)
-        patch = (patch/255.0).astype('float64')
-        chnl_values += np.sum(patch, axis=(0,1), dtype='float64')
+        patch = (patch/divisor).astype('float64')
+        chnl_values += np.sum(patch, axis=axis, dtype='float64')
     mean=chnl_values/pixel_nums
-
+  
     for path in patches:
         patch = cv2.imread(path)
-        patch = (patch/255.0).astype('float64')
-        chnl_values_sqrt += np.sum(np.square(patch-mean), axis=(0,1), dtype='float64')
+        patch = (patch/divisor).astype('float64')
+        chnl_values_sqrt += np.sum(np.square(patch-mean), axis=axis, dtype='float64')
     std=np.sqrt(chnl_values_sqrt/pixel_nums, dtype='float64')
     
     print('mean: {}, std: {}'.format(mean, std))
