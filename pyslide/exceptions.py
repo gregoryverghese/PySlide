@@ -1,3 +1,8 @@
+"""
+Custom PySlide exceptions
+"""
+
+
 class StitchingMissingPatches(Exception):
     def __init__(self,patch_names,message="patches missing"):
         self.patch_names=patch_names

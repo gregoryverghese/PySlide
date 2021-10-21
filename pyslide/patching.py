@@ -1,3 +1,12 @@
+"""
+patching.py: contains Patching and Stitching class.
+
+Patching class takes a WSI slide object from openslide and defines patching operations 
+to generate a set of patches with  corresponding ground-truth masks based on
+annotations. Stitching class takes a path to a set of WSI patches with a filename format 
+filename_x_y_.png and will build the entire slide representation.
+"""
+
 import os
 import glob
 import json
