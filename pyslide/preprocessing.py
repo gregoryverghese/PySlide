@@ -1,3 +1,11 @@
+"""
+preprocessing.py: perform operations on patch dataset
+
+1. calcutate_std_mean: calculate mean and standard deviation of pixel intensities
+2. calculate_weights: generate weights proportional to inverse of class area. Useful to 
+   tackle class imbalance for ML training
+"""
+
 import os
 import glob
 
@@ -23,28 +31,18 @@ def calculate_std_mean(patch_path, channel=True, norm=True):
     chnl_values_sqrt = np.zeros((channels))
     pixel_nums = len(patches)*shape[0]*shape[1]
     print('total number pixels: {}'.format(pixel_nums))
-    if not channel:
-        axis=(0,1,2)
-    else:
-        axis=(0,1)
-    
-    if not norm:
-        divisor=1.0
-    else:
-        divisor=255.0
-
+    axis=(0,1,2) if not channel else (0,1)
+    divisor=1.0 if not norm else 255.0
     for path in patches:
         patch = cv2.imread(path)
         patch = (patch/divisor).astype('float64')
         chnl_values += np.sum(patch, axis=axis, dtype='float64')
-    mean=chnl_values/pixel_nums
-  
+    mean=chnl_values/pixel_nums  
     for path in patches:
         patch = cv2.imread(path)
         patch = (patch/divisor).astype('float64')
         chnl_values_sqrt += np.sum(np.square(patch-mean), axis=axis, dtype='float64')
     std=np.sqrt(chnl_values_sqrt/pixel_nums, dtype='float64')
-    
     print('mean: {}, std: {}'.format(mean, std))
     return mean, std 
 
@@ -64,7 +62,9 @@ def calculate_weights(mask_path,num_cls):
             cls_nums[k] = cls_nums[k] + v
     total = sum(list(cls_nums.values()))
     weights = [v/total for v in list(cls_nums.values())]
+    print(weights)
     weights = [1/w for w in weights]
+    print(weights)
     return weights
     
 

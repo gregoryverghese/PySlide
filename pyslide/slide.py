@@ -1,7 +1,14 @@
 #!usr/bin/env python3
 
 """
-slide.py
+slide.py: contains 1. Slide class 2. Annotations Class
+
+Slide class: wrapper to openslide.OpenSlide class with addition of annotations
+
+Annotation class: Parses annotation file output from:
+    1.Qupath
+    2.ImageJ
+    3.ASAP
 """
 
 import os
@@ -251,7 +258,7 @@ class Annotations():
     :param _annotations: dictonary with return files
                       {roi1:[[x1,y1],[x2,y2],...[xn,yn],...roim:[]}
     """
-    def __init__(self, path, source,labels=None, encode=False):
+    def __init__(self, path, source,labels=[], encode=False):
         self.paths=path if isinstance(path,list) else [path]
         self.source=source
         self.labels=labels
@@ -310,7 +317,7 @@ class Annotations():
                         self._annotations[k].append(v)
                     else:
                         self._annotations[k]=v
-        if self.labels is not None:
+        if len(self.labels)>0:
             self._annotations=self.filter_labels(self.labels)
         else:
             self.labels=list(self._annotations.keys())
@@ -359,15 +366,15 @@ class Annotations():
         anns=root.findall('Annotation')
         labels=list(root.iter('Annotation'))
         labels=list(set([i.attrib['Name'] for i in labels]))
-        self.labels.extend(labels)
+        #self.labels.extend(labels)
         annotations={l:[] for l in labels}
         for i in anns:
             label=i.attrib['Name']
             instances=list(i.iter('Vertices'))
             for j in instances:
                 coordinates=list(j.iter('Vertex'))
-                coordinates=[(c.attrib['X'],c.attrib['Y']) for c in coordinates]
-                coordinates=[(round(float(c[0])),round(float(c[1]))) for c in coordinates]
+                coordinates=[[c.attrib['X'],c.attrib['Y']] for c in coordinates]
+                coordinates=[[round(float(c[0])),round(float(c[1]))] for c in coordinates]
                 annotations[label]=annotations[label]+[coordinates]
         return annotations
 
@@ -382,19 +389,18 @@ class Annotations():
         root=tree.getroot()
         ns=root[0].findall('Annotation')
         labels=list(root.iter('Annotation'))
-        self.labels=list(set([i.attrib['PartOfGroup'] for i in labels]))
+        labels=list(set([i.attrib['PartOfGroup'] for i in labels]))
         annotations={l:[] for l in labels}
         for i in ns:
             coordinates=list(i.iter('Coordinate'))
-            coordinates=[(float(c.attrib['X']),float(c.attrib['Y'])) for c in coordinates]
-            coordinates=[(round(c[0]),round(c[1])) for c in coordinates]
+            coordinates=[[float(c.attrib['X']),float(c.attrib['Y'])] for c in coordinates]
+            coordinates=[[round(c[0]),round(c[1])] for c in coordinates]
             label=i.attrib['PartOfGroup']
             annotations[label]=annotations[label]+[coordinates]
-
-        annotations = {self.class_key[k]: v for k,v in annotations.items()}
+        #annotations = {self.class_key[k]: v for k,v in annotations.items()}
         return annotations
 
-    
+
     def _qupath(self,path):
         """
         Parses qupath annotation json files
@@ -463,11 +469,11 @@ class Annotations():
         anns_df=pd.read_csv(path)
         anns_df.fillna('undefined', inplace=True)
         anns_df.set_index('labels',drop=True,inplace=True)
-        self.labels=list(set(anns_df.index))
+        labels=list(set(anns_df.index))
         annotations={l: list(zip(anns_df.loc[l].x,anns_df.loc[l].y)) for l in
-                     self.labels}
+                     labels}
 
-        annotations = {self.class_key[k]: v for k,v in annotations.items()}
+        #annotations = {self.class_key[k]: v for k,v in annotations.items()}
         self._annotations=annotations
         return annotations
 
@@ -478,12 +484,12 @@ class Annotations():
         :return :dataframe of annotations
         """
         #key={v:k for k,v in self.class_key.items()}
-        labels=[[l]*len(self._annotations[l]) for l in self._annotations.keys()]
-        labels=chain(*labels)
+        labels=[[l]*len(self._annotations[l][0]) for l in self._annotations.keys()]
+        labels=list(chain(*labels))
         #labels=[key[l] for l in labels]
-        x_values=[xi[0] for x in list(self._annotations.values()) for xi in x]
-        y_values=[yi[1] for y in list(self._annotations.values()) for yi in y]
-        df=pd.DataFrame({'labels':labels,'x':x_values,'y':y_values})
+        x_values=[xi[0] for x in list(self._annotations.values()) for xi in x[0]]
+        y_values=[yi[1] for y in list(self._annotations.values()) for yi in y[0]]
+        df=pd.DataFrame({'labels':list(labels),'x':x_values,'y':y_values})
 
         return df
 

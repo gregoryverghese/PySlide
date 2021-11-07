@@ -1,14 +1,5 @@
-#!/usr/local/share python
-# -*- coding: utf-8 -*-
-
 '''
-def resizeImage(dim, factor=2048, threshold=0, op=operator.gt):
-    boundaries = [factor*i for i in range(100000)]
-    boundaries = [f for f in boundaries if op(f,threshold)]
-    diff = list(map(lambda x: abs(dim-x), boundaries))
-    newDim = boundaries[diff.index(min(diff))]
-
-    return newDimutilities.py
+utilities.py: useful functions
 '''
 
 import numpy as np
@@ -36,31 +27,6 @@ def draw_boundary(annotations, offset=100):
     boundaries = list(map(lambda x: (min(x)-offset, max(x)+offset), list(zip(*coords))))
    
     return boundaries
-
-
-def getRegions(xmlFileName):
-
-    tree = ET.parse(xmlFileName)
-    root = tree.getroot()
-    pixelSpacing = float(root.get('MicronsPerPixel'))
-
-    regions = {n.attrib['Name']: n[1].findall('Region') for n in root}
-    labelAreas = {}
-
-    for a in regions:
-        region = {}
-        for r in regions[a]:
-            iD = int(r.get('Id'))
-            area = r.attrib['AreaMicrons']
-            length = r.attrib['LengthMicrons']
-            vertices = r[1].findall('Vertex')
-            f = lambda x: (int(float(x.attrib['X'])), int(float(x.attrib['Y'])))
-            coords = list(map(f, vertices))
-            region[iD] = dict(zip(('area', 'length', 'coords'), (area, length, coords)))
-  
-        labelAreas[a] = region
- 
-    return labelAreas
 
 
 def oneHotToMask(onehot):
