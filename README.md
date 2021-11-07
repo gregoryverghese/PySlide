@@ -19,7 +19,7 @@ A library for preprocessing histology slides (WSIs) with a focus for downstream 
 * generate class weights
 * stitch patches
 
-### TODO
+### ToDo
 
 * sampling techniques
 * preprocessing functions
