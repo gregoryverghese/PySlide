@@ -1,10 +1,13 @@
 """
-patching.py: contains Patching and Stitching class.
+patching.py: contains 1. Patching class 2. Stitching class.
 
-Patching class takes a WSI slide object from openslide and defines patching operations 
-to generate a set of patches with  corresponding ground-truth masks based on
-annotations. Stitching class takes a path to a set of WSI patches with a filename format 
-filename_x_y_.png and will build the entire slide representation.
+Patching class - takes WSI openslide slide object and  defines patching
+functions to generate a set of tiles. Control magnfication, step size, 
+and patch size. Generate patch binary/multiclass masks or patch-level lavels  
+based on annotations. 
+
+Stitching class - takes location of WSI patches with a filename format filename_x_y_.png 
+and will stitch tiles to form entire slide or mask representation.
 """
 
 import os
@@ -103,19 +106,14 @@ class Patching():
         ymin=int(self.slide._border[1][0])
         ymax=int(self.slide._border[1][1])
         remove=False
-
         if x+x_size>xmax:
             remove=True
-        if x-x_size<xmin:
-            remove=True
         if y+y_size>ymax:
-            remove=True
-        if y-y_size<ymin:
             remove=True
         return remove
 
 
-    def generate_patches(self, step, mode="Sparse"):
+    def generate_patches(self, step, mode="Sparse", edge_cases=False):
         """
         generate patch coordinates based on mag,step and size
         :param step: integer: step size
@@ -130,10 +128,13 @@ class Patching():
         xmax=int(self.slide._border[0][1])
         ymin=int(self.slide._border[1][0])
         ymax=int(self.slide._border[1][1])
+        if (xmax,ymax)==self.slide.dims:
+            edge_cases==True
         for x, y in self.patching(step,xmin,xmax,ymin,ymax):
             name=self.slide.name+'_'+str(x)+'_'+str(y)
-            if self._remove_edge_case(x,y):
-                continue
+            if edge_cases:
+                if self._remove_edge_case(x,y):
+                    continue
             self._patches.append({'name':name,'x':x,'y':y})
         if mode=="focus":
             self.focus()
@@ -174,34 +175,38 @@ class Patching():
     #threshold test
     def generate_labels(self,threshold=0.5):
         """
-        generate class label for patches based on 
-        pixel-level annotations
+        generate patch labels based on pixel-level annotations
         :param threshold: threshold proportion
         :return classes and count
         """
-
         for i, (mask,_) in enumerate(self.extract_masks()):
             cls,cnts=np.unique(mask, return_counts=True)
             cls,cnts=(list(cls),list(cnts))
             if len(cls)>1:
                 cnts.pop(cls.index(0))
                 cls.remove(0)
-            y=cls[cls.index(max(cls))]
+            y=cls[cnts.index(max(cnts))]
             y_cnt=max(cnts)
             if len(cls)>1:
                 if self.__filter(y_cnt,cnts,threshold):
                     self._patches[i]['labels']=y
                     self._labels.append(y)
                 else:
-                    self._patches[i]['labels']=99999999
-                    self._labels.append(99999999)
+                    self._patches[i]['labels']='below'
+                    self._labels.append('below')
             else:
                 self._patches[i]['labels']=y
                 self._labels.append(y)
-        
         return np.unique(np.array(self._labels),return_counts=True)
-    
 
+
+    def filter_labels(self):
+        for i,l in enumerate(self.labels):
+            self._patches.pop(i)
+            self._labels.pop(i)
+        return len(self._patches)
+
+    
     def plotlabeldist(self):
         """
         plot label distribution
@@ -236,7 +241,6 @@ class Patching():
         print('Remaining:{}'.format(len(self._patches)))
         return removed
                 
-    
     
     def extract_patch(self, x=None, y=None):
         """
