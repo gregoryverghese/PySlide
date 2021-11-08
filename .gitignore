@@ -6,6 +6,7 @@
 *venv
 *.ipynb
 *.swp
+*.swo
 *.json
 *.xml
 *__pycache__
