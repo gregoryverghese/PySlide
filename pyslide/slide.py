@@ -60,7 +60,6 @@ class Slide(OpenSlide):
         else:
             self.annotations=annotations
 
-
     @property
     def slide_mask(self):
        mask=self.generate_mask((2000,2000))
@@ -131,7 +130,7 @@ class Slide(OpenSlide):
             f=lambda x: (min(x)-space, max(x)+space)
             self._border=list(map(f, list(zip(*coordinates))))
         mag_factor=Slide.MAG_fACTORS[self.mag]
-        f=lambda x: (x[0]/mag_factor,x[1]/mag_factor)
+        f=lambda x: (int(x[0]/mag_factor),int(x[1]/mag_factor))
         self._border=list(map(f,self._border))
 
         return self._border
@@ -222,9 +221,9 @@ class Slide(OpenSlide):
             x_size=self.dimensions[0]-x_min
         if (y_min+y_size)>self.dimensions[1]:
             y_size=self.dimensions[1]-y_min
-        x_size=int(x_size/Slide.MAG_fACTORS[mag])
-        y_size=int(y_size/Slide.MAG_fACTORS[mag])
-        region=self.read_region((x_min,y_min),mag,(x_size, y_size))
+        x_size_adj=int(x_size/Slide.MAG_fACTORS[mag])
+        y_size_adj=int(y_size/Slide.MAG_fACTORS[mag])
+        region=self.read_region((x_min,y_min),mag,(x_size_adj, y_size_adj))
         mask=self.generate_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
         return np.array(region.convert('RGB')), mask
 
