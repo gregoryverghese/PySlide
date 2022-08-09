@@ -13,6 +13,7 @@ and will stitch tiles to form entire slide or mask representation.
 import os
 import glob
 import json
+import random
 
 import numpy as np
 import cv2
@@ -23,6 +24,8 @@ import pandas as pd
 import seaborn as sns
 from itertools import chain
 import operator as op
+from skimage.morphology import disk
+from skimage.filters.rank import entropy
 from pyslide.utilities import mask2rgb
 from pyslide.exceptions import StitchingMissingPatches
 
@@ -32,13 +35,19 @@ __email__='gregory.verghese@gmail.com'
 
 
 class Patching():
-    def __init__(self, slide, size, mag_level=0,
-                 border=None, mode=None, step=None):
+    def __init__(self, 
+                 slide, 
+                 size, 
+                 mag_level=0,
+                 border=None, 
+                 mode=None, 
+                 step=None):
 
         super().__init__()
         self.slide=slide
         self.mag_level=mag_level
         self.size=size
+        self.border=slide._border if border is None else border
         self.step=size[0] if step is None else step
         self.mode='sparse' if mode is None else mode
         self._patches=[]
@@ -68,7 +77,7 @@ class Patching():
                 'mag':self.mag_level,
                 'size':self.size,
                 'step':self.step,
-                'border':self.slide._border,
+                'border':self.border,
                 'mode':None,
                 'number':self._number}
         return config
@@ -101,10 +110,10 @@ class Patching():
         """
         x_size=int(self.size[0]*self._downsample)
         y_size=int(self.size[1]*self._downsample)
-        xmin=int(self.slide._border[0][0])
-        xmax=int(self.slide._border[0][1])
-        ymin=int(self.slide._border[1][0])
-        ymax=int(self.slide._border[1][1])
+        xmin=int(self.border[0][0])
+        xmax=int(self.border[0][1])
+        ymin=int(self.border[1][0])
+        ymax=int(self.border[1][1])
         remove=False
         if x+x_size>xmax:
             remove=True
@@ -113,7 +122,10 @@ class Patching():
         return remove
 
 
-    def generate_patches(self, step, mode="Sparse", edge_cases=False):
+    def generate_patches(self, 
+                         step, 
+                         mode="Sparse", 
+                         edge_cases=False):
         """
         generate patch coordinates based on mag,step and size
         :param step: integer: step size
@@ -124,10 +136,10 @@ class Patching():
         self.step=step
         self._patches=[]
         step=step*self._downsample
-        xmin=int(self.slide._border[0][0])
-        xmax=int(self.slide._border[0][1])
-        ymin=int(self.slide._border[1][0])
-        ymax=int(self.slide._border[1][1])
+        xmin=int(self.border[0][0])
+        xmax=int(self.border[0][1])
+        ymin=int(self.border[1][0])
+        ymax=int(self.border[1][1])
         if (xmax,ymax)==self.slide.dims:
             edge_cases==True
         for x, y in self.patching(step,xmin,xmax,ymin,ymax):
@@ -240,8 +252,18 @@ class Patching():
         print('Num removed: {}'.format(removed))
         print('Remaining:{}'.format(len(self._patches)))
         return removed
-                
-    
+
+
+    #can we sample and return a new patching object
+    def sample_patches(self,n,replacement=False):
+        if not replacement:
+            patches=random.sample(self._patches,n)
+        elif replacement:
+            patches=random.choice(self._patches,n)
+        #return patches
+        self._patches=patches
+
+
     def extract_patch(self, x=None, y=None):
         """
         extract individual patch from WSI
@@ -321,7 +343,17 @@ class Patching():
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         status=cv2.imwrite(image_path,image)
         return status
-    
+   
+
+    def save_mask(self,path,dir_name):
+
+        mask_generator=self.extract_masks()
+        mask_path=os.path.join(path,dir_name)
+        os.makedirs(mask_path,exist_ok=True)
+        filename=self.slide.name
+        for mask,m in self.extract_masks():
+            self.save_image(mask,mask_path,filename,m['x'],m['y'])
+
 
     def save(self, path, mask_flag=False, label_dir=False, label_csv=False):
         """
@@ -335,6 +367,13 @@ class Patching():
         os.makedirs(patch_path,exist_ok=True)
         filename=self.slide.name
         for patch,p in self.extract_patches():
+            #gray=cv2.cvtColor(patch,cv2.COLOR_RGB2GRAY)
+            #entr=entropy(gray,disk(10))
+            #avg_entr=np.mean(entr)
+            #if np.mean(patch)>200:
+                #continue
+            #if avg_entr<5:
+                #continue
             if label_dir:
                 patch_path=os.path.join(path_path,patch['labels'])
             self.save_image(patch,patch_path,filename,p['x'],p['y'])
@@ -355,16 +394,23 @@ class Stitching():
 
     MAG_FACTORS={0:1,1:2,2:4,3:8,4:16,5:32,5:64}
 
-    def __init__(self,patch_path,slide=None,patching=None,name=None,
-             step=None,border=None,mag_level=0):
+    def __init__(self,patch_path,
+                 slide=None,
+                 patching=None,
+                 name=None,
+                 step=None,
+                 border=None,
+                 mag_level=0):
 
         self.patch_path=patch_path
         patch_files=glob.glob(os.path.join(self.patch_path,'*'))
         self.patch_files=[os.path.basename(p) for p in patch_files]
+        print(patch_files[0])
         self.fext=self.patch_files[0].split('.')[-1]
         self.slide=slide
         self.coords=self._get_coords()
         self.mag_level=mag_level
+        print(self.patch_files)
 
         if name is not None:
             self.name=name
@@ -458,6 +504,7 @@ class Stitching():
         """
         missing_patches=[]
         for (p_name,_,_) in self._patches():
+            print(p_name)
             if p_name not in self.patch_files:
                 missing_patches.append(p_name)
         if len(missing_patches)>0:        
@@ -491,7 +538,8 @@ class Stitching():
         xnew=(xmax+z-xmin)/self.mag_factor
         ynew=(ymax+z-ymin)/self.mag_factor
         canvas=np.zeros((int(ynew),int(xnew),3))
-         
+        
+        #what do we do if it is none
         if size is not None:
             x_num=(xmax-xmin)/(self.step*self.mag_factor)+1
             y_num=(ymax-ymin)/(self.step*self.mag_factor)+1
