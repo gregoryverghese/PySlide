@@ -34,7 +34,7 @@ __author__='Gregory Verghese'
 __email__='gregory.verghese@gmail.com'
 
 
-class Patching():
+class Patch():
     def __init__(self, 
                  slide, 
                  size, 
@@ -49,7 +49,7 @@ class Patching():
         self.size=size
         self.border=slide._border if border is None else border
         self.step=size[0] if step is None else step
-        self.mode='sparse' if mode is None else mode
+        #self.mode='sparse' if mode is None else mode
         self._patches=[]
         self._labels=[]
         self._downsample=int(slide.level_downsamples[mag_level])
@@ -92,12 +92,12 @@ class Patching():
 
 
     @staticmethod
-    def patching(step,xmin,xmax,ymin,ymax):
+    def _patching(step,x_min,x_max,y_min,y_max):
         """
         step across coordinate range
         """
-        for x in range(xmin,xmax, step):
-            for y in range(ymin,ymax,step):
+        for x in range(x_min,x_max, step):
+            for y in range(y_min,y_max,step):
                 yield x, y
 
 
