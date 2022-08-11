@@ -24,11 +24,10 @@ import pandas as pd
 import seaborn as sns
 from itertools import chain
 import operator as op
-from skimage.morphology import disk
-from skimage.filters.rank import entropy
+
 from pyslide.utilities import mask2rgb
 from pyslide.exceptions import StitchingMissingPatches
-
+from pyslide.analysis.filters import entropy
 
 __author__='Gregory Verghese'
 __email__='gregory.verghese@gmail.com'
@@ -39,8 +38,7 @@ class Patch():
                  slide, 
                  size, 
                  mag_level=0,
-                 border=None, 
-                 mode=None, 
+                 border=None,  
                  step=None):
 
         super().__init__()
@@ -48,6 +46,10 @@ class Patch():
         self.mag_level=mag_level
         self.size=size
         self.border=slide._border if border is None else border
+        self._x_min = int(self.border[0][0])
+        self._x_max = int(self.border[0][1])
+        self._y_min = int(self.border[1][0])
+        self._y_max = int(self.border[1][1])
         self.step=size[0] if step is None else step
         #self.mode='sparse' if mode is None else mode
         self._patches=[]
@@ -55,7 +57,8 @@ class Patch():
         self._downsample=int(slide.level_downsamples[mag_level])
         num=self.generate_patches(self.step,self.mode)
         print('num patches: {}'.format(num))
-    
+        
+
     @property
     def number(self):
         return len(self._patches)
@@ -64,6 +67,11 @@ class Patch():
     @property
     def patches(self):
         return self._patches
+
+
+    @patches.setter
+    def patches(self,value):
+        self._patches=patches
 
 
     @property
@@ -91,13 +99,12 @@ class Patch():
         return str(self.config)
 
 
-    @staticmethod
-    def _patching(step,x_min,x_max,y_min,y_max):
+    def _patching(step):
         """
         step across coordinate range
         """
-        for x in range(x_min,x_max, step):
-            for y in range(y_min,y_max,step):
+        for x in range(self.x_min,self.x_max, step):
+            for y in range(self.y_min,self.y_max,step):
                 yield x, y
 
 
@@ -110,21 +117,16 @@ class Patch():
         """
         x_size=int(self.size[0]*self._downsample)
         y_size=int(self.size[1]*self._downsample)
-        xmin=int(self.border[0][0])
-        xmax=int(self.border[0][1])
-        ymin=int(self.border[1][0])
-        ymax=int(self.border[1][1])
         remove=False
-        if x+x_size>xmax:
+        if x+x_size>self.x_max:
             remove=True
-        if y+y_size>ymax:
+        if y+y_size>self.y_max:
             remove=True
         return remove
 
 
     def generate_patches(self, 
                          step, 
-                         mode="Sparse", 
                          edge_cases=False):
         """
         generate patch coordinates based on mag,step and size
@@ -136,20 +138,14 @@ class Patch():
         self.step=step
         self._patches=[]
         step=step*self._downsample
-        xmin=int(self.border[0][0])
-        xmax=int(self.border[0][1])
-        ymin=int(self.border[1][0])
-        ymax=int(self.border[1][1])
-        if (xmax,ymax)==self.slide.dims:
+        if (self.x_max,self.y_max)==self.slide.dims:
             edge_cases==True
-        for x, y in self.patching(step,xmin,xmax,ymin,ymax):
+        for x, y in self.patching(step):
             name=self.slide.name+'_'+str(x)+'_'+str(y)
             if edge_cases:
                 if self._remove_edge_case(x,y):
                     continue
             self._patches.append({'name':name,'x':x,'y':y})
-        if mode=="focus":
-            self.focus()
         self._number=len(self._patches)
         return self._number
 
@@ -171,7 +167,7 @@ class Patch():
 
 
     @staticmethod
-    def __filter(y_cnt,cnts,threshold):
+    def _filter(y_cnt,cnts,threshold):
         """
         check proportion of class count
         :param y_cnt: pixel count of class
@@ -199,6 +195,7 @@ class Patch():
                 cls.remove(0)
             y=cls[cnts.index(max(cnts))]
             y_cnt=max(cnts)
+
             if len(cls)>1:
                 if self.__filter(y_cnt,cnts,threshold):
                     self._patches[i]['labels']=y
@@ -219,7 +216,7 @@ class Patch():
         return len(self._patches)
 
     
-    def plotlabeldist(self):
+    def plot_class_dist(self):
         """
         plot label distribution
         :return sns.distplot for classes
@@ -229,7 +226,10 @@ class Patch():
         return sns.barplot(x=cls,y=cnts)
 
 
-    def filter_patches(self,threshold,channel=None):
+    def filter_patches(self,
+                       filter_type
+                       threshold,
+                       channel=None):
         """
         filter patches based on pixel intensity
         :param threshold: intesnity threshold value
@@ -238,30 +238,31 @@ class Patch():
         """
         num_b4=self._number
         patches=self._patches.copy()
-        if channel is not None:
-            for patch,p in self.extract_patches():
-                if np.mean(patch[:,:,channel])>threshold:
-                    self._patches.remove(p)
-        elif channel is None:
-            for patch,p in self.extract_patches():
-                if np.mean(patch)>threshold:
-                    patches.remove(p)
-                    continue
+
+        if filter_type=='entropy':
+            for patch, p in self.extract_patches():
+                avg_entropy=entropy(patch)
+            if avg_entropy<threshold:
+                self._patches.remove(p)
+
+        elif filter_type=='intensity':
+            if channel is not None:
+                for patch,p in self.extract_patches():
+                    if np.mean(patch[:,:,channel])>threshold:
+                        self._patches.remove(p)
+            elif channel is None:
+                for patch,p in self.extract_patches():
+                    if np.mean(patch)>threshold:
+                        patches.remove(p)
+                        continue
+
         self._patches=patches.copy()
         removed=num_b4-len(self._patches)
         print('Num removed: {}'.format(removed))
         print('Remaining:{}'.format(len(self._patches)))
+
         return removed
 
-
-    #can we sample and return a new patching object
-    def sample_patches(self,n,replacement=False):
-        if not replacement:
-            patches=random.sample(self._patches,n)
-        elif replacement:
-            patches=random.choice(self._patches,n)
-        #return patches
-        self._patches=patches
 
 
     def extract_patch(self, x=None, y=None):
@@ -340,12 +341,13 @@ class Patch():
         elif (x and y) is not None:
              filename=filename+'_'+str(x)+'_'+str(y)+'.png'
              image_path=os.path.join(path,filename)
+
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         status=cv2.imwrite(image_path,image)
         return status
    
 
-    def save_mask(self,path,dir_name):
+    def save_masks(self,path,dir_name):
 
         mask_generator=self.extract_masks()
         mask_path=os.path.join(path,dir_name)
@@ -355,7 +357,11 @@ class Patch():
             self.save_image(mask,mask_path,filename,m['x'],m['y'])
 
 
-    def save(self, path, mask_flag=False, label_dir=False, label_csv=False):
+    def save(self, 
+             path, 
+             mask_flag=False, 
+             label_dir=False, 
+             label_csv=False):
         """
         object save method. saves down all patches
         :param path: save path
@@ -367,13 +373,6 @@ class Patch():
         os.makedirs(patch_path,exist_ok=True)
         filename=self.slide.name
         for patch,p in self.extract_patches():
-            #gray=cv2.cvtColor(patch,cv2.COLOR_RGB2GRAY)
-            #entr=entropy(gray,disk(10))
-            #avg_entr=np.mean(entr)
-            #if np.mean(patch)>200:
-                #continue
-            #if avg_entr<5:
-                #continue
             if label_dir:
                 patch_path=os.path.join(path_path,patch['labels'])
             self.save_image(patch,patch_path,filename,p['x'],p['y'])
