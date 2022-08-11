@@ -26,12 +26,11 @@ class LMDBWrite():
         return image_bytes
 
 
-    def write(self,image_paths): 
+    def write(self,patch): 
         txn=self.env.begin(write=True)
-        for i, pth in enumerate(image_paths):
-            image=np.array(Image.open(pth))
-            value=self._serialize(image)
-            key = f"{os.path.basename(pth)[:-4]}"
+        for i, patch, p in enumerate(patch.extract_patches()):
+            value=self._serialize(patch)
+            key = f"{p['name']}"
             txn.put(key.encode("ascii"), pickle.dumps(value))
             if i % self.write_frequency == 0:
                 #print("[%d/%d]" % (idx, len(data_loader)))
@@ -39,15 +38,6 @@ class LMDBWrite():
                 txn = self.env.begin(write=True)
         txn.commit()
         self.env.close()
-
-
-    def write_image(self,image,name): 
-        txn=self.env.begin(write=True)
-        print('just before we write',print(name),image.shape)
-        #value=self._serialize(image)
-        key = f"{name}"
-        txn.put(key.encode('ascii'), pickle.dumps(image))
-        txn.commit()
 
 
     def close(self):
