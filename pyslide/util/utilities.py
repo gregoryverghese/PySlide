@@ -49,9 +49,9 @@ def sample_patches(patch,n,replacement=False):
 
     new_patch =  Patch(patch.slide,
                        patch.size,
-                       patch.mag_level=0,
+                       patch.mag_level,
                        patch.border,  
-                       patch.step):
+                       patch.step)
 
     new_patch.patches=patches
     return new_patches
