@@ -25,7 +25,7 @@ import seaborn as sns
 from itertools import chain
 import operator as op
 
-from pyslide.utilities import mask2rgb
+from pyslide.util.utilities import mask2rgb
 from pyslide.exceptions import StitchingMissingPatches
 from pyslide.analysis.filters import entropy
 
@@ -227,7 +227,7 @@ class Patch():
 
 
     def filter_patches(self,
-                       filter_type
+                       filter_type,
                        threshold,
                        channel=None):
         """
@@ -323,7 +323,7 @@ class Patch():
 
 
     @staticmethod
-    def save_image(image,path,filename,x=None,y=None):
+    def _save_disk(image,path,filename,x=None,y=None):
         """
         save patch
         :param image: ndarray patch
@@ -372,21 +372,33 @@ class Patch():
         patch_path=os.path.join(path,'images')
         os.makedirs(patch_path,exist_ok=True)
         filename=self.slide.name
+
         for patch,p in self.extract_patches():
             if label_dir:
-                patch_path=os.path.join(path_path,patch['labels'])
+                 patch_path=os.path.join(path_path,patch['labels'])
             self.save_image(patch,patch_path,filename,p['x'],p['y'])
         if mask_flag:
             mask_generator=self.extract_masks()
             mask_path=os.path.join(path,'masks')
-            os.makedirs(mask_path,exist_ok=True)
+                os.makedirs(mask_path,exist_ok=True)
             if label_dir:
                 patch_path=os.path.join(path_path,patch['labels'])
-            for mask,m in self.extract_masks():
-                self.save_image(mask,mask_path,filename,m['x'],m['y'])
+                for mask,m in self.extract_masks():
+                    self.save_image(mask,mask_path,filename,m['x'],m['y'])
+
         if label_csv:
             df=pd.DataFrame(self._patches,columns=['names','x','y','labels'])
             df.to_csv(os.path.join(path,'labels.csv'))
+
+
+    def to_lmdb(self, db_path, write_frequency=100):
+        size_estimate=len(self._patches)*self.size[0]*self.size[1]*3
+        db_write=LMDBWrite(db_path,size_estimate,write_frequency)
+        db_write.write(self)
+            
+
+    def to_tfrecords(self, db_path):
+        pass
 
 
 class Stitching():
