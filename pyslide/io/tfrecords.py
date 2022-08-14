@@ -1,38 +1,39 @@
+import os
+import json
+import glob
+import argparse
+import math
 
-
-
-
-
+import cv2
+import numpy as np
+import tensorflow as tf
 
 
 
 class TFRecordRead(self):
     def __init__(self):
-        pass
+        self.db_path=db_path
+        self.dims=dims
 
 
     @property
     def num(self):
         pass
 
+
     @static_method
     def _print_progress(self,i):
-        pass
+        complete = float(count)/total
+        print('\r- Progress: {0:.1%}'.format(complete), flush=True)
 
     
-    def _wrap_Int_64(value):
+    @static_method
+    def _wrap_int64(self,value):
         return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
 
-    def wrap_float(value):
-    '''
-    convert to tf float
-    returns:
-    '''
-    return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
-
-
-    def wrap_bytes(value):
+    @static_method
+    def _wrap_bytes(self,value):
     '''
     convert value to bytes
     param: value: image
@@ -43,18 +44,15 @@ class TFRecordRead(self):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-    def convert():
-        writer=tf.io.TFRecordWriter(tfRecordPath)
-        for i, (img, m) in enumerate(images):
+    def convert(self, patch):
+        writer=tf.io.TFRecordWriter(self.db_path)
+        for i, (p, image) in enumerate(patch.extract_patches()):
             self._print_progress(i)
-            #image_name=os.path.basename
-            image = tf.keras.preprocessing.image.load_img(image_path)
-            image = tf.keras.preprocessing.image.img_to_array(image,dtype=np.uint8)
             image = tf.image.encode_png(image)
             
             data = {
                 'image': wrap_bytes(image),
-                'name': wrap_bytes(name),
+                'name': wrap_bytes(p['name']),
                 'dims': wrap_int64(dims[0]) 
                 }
                
