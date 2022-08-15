@@ -1,5 +1,5 @@
 from skimage.morphology import disk
-from skimage.filters.rankk import entropy
+from skimage.filters.rank import entropy
 
 
 def entropy(patch):
