@@ -138,6 +138,7 @@ class Patch():
         self.step=step
         self._patches=[]
         step=step*self._downsample
+
         if (self.x_max,self.y_max)==self.slide.dims:
             edge_cases==True
         for x, y in self.patching(step):
@@ -146,6 +147,7 @@ class Patch():
                 if self._remove_edge_case(x,y):
                     continue
             self._patches.append({'name':name,'x':x,'y':y})
+
         self._number=len(self._patches)
         return self._number
 
@@ -157,12 +159,12 @@ class Patch():
         :return len(self._patches): number of patches
         """
         for p in self._patches:
-            x=p['x']
-            y=p['y'] 
-            mask=self.slide.slide_mask[y:y+self.size[0],x:x+self.size[1]]
-            classes = len(np.unique(mask))
-            if classes<num:
-                self._patches.remove(p)
+            if self.slide.annotations is None:
+                x,y =(p['x'],p['y'])
+                mask=self.slide.slide_mask[y:y+self.size[0],x:x+self.size[1]]
+                classes = len(np.unique(mask))
+                if classes<num:
+                    self._patches.remove(p)
         return len(self._patches)
 
 
@@ -187,25 +189,26 @@ class Patch():
         :param threshold: threshold proportion
         :return classes and count
         """
+        #empty annotations
+        self._labels=[]
+        if self.slide.annotations is None: 
+            self._labels=[np.nan]*len(self._patches)
+
         for i, (mask,_) in enumerate(self.extract_masks()):
             cls,cnts=np.unique(mask, return_counts=True)
             cls,cnts=(list(cls),list(cnts))
-            if len(cls)>1:
-                cnts.pop(cls.index(0))
-                cls.remove(0)
+            cnts.pop(cls.index(0))
+            cls.remove(0)
             y=cls[cnts.index(max(cnts))]
             y_cnt=max(cnts)
 
-            if len(cls)>1:
-                if self.__filter(y_cnt,cnts,threshold):
-                    self._patches[i]['labels']=y
-                    self._labels.append(y)
-                else:
-                    self._patches[i]['labels']='below'
-                    self._labels.append('below')
-            else:
-                self._patches[i]['labels']=y
+            if self._filter(y_cnt,cnts,threshold):
+                self._patches[i]['label']=y
                 self._labels.append(y)
+            else:
+                self._patches[i]['label']=np.nan
+                self._labels.append(np.nan)
+
         return np.unique(np.array(self._labels),return_counts=True)
 
 
@@ -221,7 +224,9 @@ class Patch():
         plot label distribution
         :return sns.distplot for classes
         """
-        labels=[self._patches[i]['labels'] for i in range(len(self._patches))]
+        #Raise error for no labels calculated yet
+        if len(self._labels)==0:
+            self.generate_labels()
         cls,cnts=np.unique(np.array(self._labels),return_counts=True)
         return sns.barplot(x=cls,y=cnts)
 
@@ -380,7 +385,7 @@ class Patch():
         if mask_flag:
             mask_generator=self.extract_masks()
             mask_path=os.path.join(path,'masks')
-                os.makedirs(mask_path,exist_ok=True)
+            os.makedirs(mask_path,exist_ok=True)
             if label_dir:
                 patch_path=os.path.join(path_path,patch['labels'])
                 for mask,m in self.extract_masks():
