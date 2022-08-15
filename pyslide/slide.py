@@ -26,7 +26,7 @@ import pandas as pd
 import seaborn as sns
 from itertools import chain
 import operator as op
-from pyslide.utilities import mask2rgb
+from pyslide.util.utilities import mask2rgb
 
 
 __author__='Gregory Verghese'
@@ -45,24 +45,36 @@ class Slide(OpenSlide):
     :param _border: list of border coordinates [(x1,y1),(x2,y2)]
     """
     MAG_fACTORS={0:1,1:2,2:4,3:8,4:16,5:32}
+    MASK_SIZE=(2000,2000)
 
-    def __init__(self,filename,mag=0,annotations=None,
-                 annotations_path=None,labels=None,source=None):
+    def __init__(self,
+                 filename,
+                 mag=0,
+                 annotations=None,
+                 annotations_path=None,
+                 labels=None,
+                 source=None):
         super().__init__(filename)
 
         self.mag=mag
         self.dims=self.dimensions
         self.name=os.path.basename(filename)
         self._border=None
-        if annotations_path is not None:
-            self.annotations=Annotations(annotations_path,source=source,
-                                         labels=labels,encode=True)
-        else:
+
+        if annotations is not None:
             self.annotations=annotations
+        elif annotations_path is not None:
+            self.annotations=Annotations(annotations_path,
+                                         source=source,
+                                         labels=labels,
+                                         encode=True
+                                         )
+        else:
+            self.annotations=None
 
     @property
     def slide_mask(self):
-       mask=self.generate_mask((2000,2000))
+       mask=self.generate_mask((MASK_SIZE))
        mask=mask2rgb(mask)
        return mask
 
@@ -129,11 +141,13 @@ class Slide(OpenSlide):
             coordinates=list(chain(*coordinates))
             f=lambda x: (min(x)-space, max(x)+space)
             self._border=list(map(f, list(zip(*coordinates))))
+
         mag_factor=Slide.MAG_fACTORS[self.mag]
         f=lambda x: (int(x[0]/mag_factor),int(x[1]/mag_factor))
         self._border=list(map(f,self._border))
 
         return self._border
+
 
     #Need to do min size in terms of micrometers not pixels
     def detect_components(self,level_dims=6,num_component=None,min_size=None):
@@ -149,13 +163,16 @@ class Slide(OpenSlide):
         blur=cv2.bilateralFilter(np.bitwise_not(gray),9,100,100)
         _,thresh=cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         contours,_=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+
         if num_component is not None:
             idx=sorted([(cv2.contourArea(c),i) for i,c in enumerate(contours)])
             contours=[contours[i] for c, i in idx]
             contours=contours[-num_component:]
+
         if min_size is not None:
             contours=list(map(lambda x, y: cv2.contourArea(x),contours))
             contours=[c for c in contours if c>min_area]
+
         borders=[]
         components=[]
         image_new=image.copy()
@@ -170,12 +187,21 @@ class Slide(OpenSlide):
             self._border=[(x1,x2),(y1,y2)]
             image_new=cv2.rectangle(image_new,(x,y),(x+w,y+h),(0,255,0),2)
             components.append(image_new)
-            borders.append([(x1,x2),(y1,y2)])            
+            borders.append([(x1,x2),(y1,y2)])
+
         return components, borders 
     
 
-    def generate_region(self, mag=0, x=None, y=None, x_size=None, y_size=None,
-                        scale_border=False, factor=1, threshold=None, operator='=>'):
+    def generate_region(self, 
+                        mag=0, 
+                        x=None, 
+                        y=None, 
+                        x_size=None, 
+                        y_size=None,
+                        scale_border=False, 
+                        factor=1, 
+                        threshold=None, 
+                        operator='=>'):
         """
         Extracts specific regions of the slide
         :param mag: magnification level
@@ -214,6 +240,7 @@ class Slide(OpenSlide):
             elif isinstance(y,int):
                 y_min=y
                 y_max=y_min+y_size
+
         if scale_border:
             x_size = Slide.resize_border(x_size, factor, threshold, operator)
             y_size = Slide.resize_border(y_size, factor, threshold, operator)
@@ -221,11 +248,14 @@ class Slide(OpenSlide):
             x_size=self.dimensions[0]-x_min
         if (y_min+y_size)>self.dimensions[1]:
             y_size=self.dimensions[1]-y_min
+
         x_size_adj=int(x_size/Slide.MAG_fACTORS[mag])
         y_size_adj=int(y_size/Slide.MAG_fACTORS[mag])
         region=self.read_region((x_min,y_min),mag,(x_size_adj, y_size_adj))
         mask=self.generate_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
+
         return np.array(region.convert('RGB')), mask
+
 
     def save(self, path, size=(2000,2000), mask=False):
         """
