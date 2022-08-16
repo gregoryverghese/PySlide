@@ -28,6 +28,7 @@ import operator as op
 from pyslide.util.utilities import mask2rgb
 from pyslide.exceptions import StitchingMissingPatches
 from pyslide.analysis.filters import entropy
+from pyslide.io.lmdb_io import LMDBWrite
 
 __author__='Gregory Verghese'
 __email__='gregory.verghese@gmail.com'
@@ -55,7 +56,7 @@ class Patch():
         self._patches=[]
         self._labels=[]
         self._downsample=int(slide.level_downsamples[mag_level])
-        num=self.generate_patches(self.step,self.mode)
+        num=self.generate_patches(self.step)
         print('num patches: {}'.format(num))
         
 
@@ -99,12 +100,12 @@ class Patch():
         return str(self.config)
 
 
-    def _patching(step):
+    def _patching(self,step):
         """
         step across coordinate range
         """
-        for x in range(self.x_min,self.x_max, step):
-            for y in range(self.y_min,self.y_max,step):
+        for x in range(self._x_min,self._x_max, step):
+            for y in range(self._y_min,self._y_max,step):
                 yield x, y
 
 
@@ -118,9 +119,9 @@ class Patch():
         x_size=int(self.size[0]*self._downsample)
         y_size=int(self.size[1]*self._downsample)
         remove=False
-        if x+x_size>self.x_max:
+        if x+x_size>self._x_max:
             remove=True
-        if y+y_size>self.y_max:
+        if y+y_size>self._y_max:
             remove=True
         return remove
 
@@ -139,9 +140,9 @@ class Patch():
         self._patches=[]
         step=step*self._downsample
 
-        if (self.x_max,self.y_max)==self.slide.dims:
+        if (self._x_max,self._y_max)==self.slide.dims:
             edge_cases==True
-        for x, y in self.patching(step):
+        for x, y in self._patching(step):
             name=self.slide.name+'_'+str(x)+'_'+str(y)
             if edge_cases:
                 if self._remove_edge_case(x,y):
@@ -359,7 +360,7 @@ class Patch():
         os.makedirs(mask_path,exist_ok=True)
         filename=self.slide.name
         for mask,m in self.extract_masks():
-            self.save_image(mask,mask_path,filename,m['x'],m['y'])
+            self._save_disk(mask,mask_path,filename,m['x'],m['y'])
 
 
     def save(self, 
@@ -398,6 +399,7 @@ class Patch():
 
     def to_lmdb(self, db_path, write_frequency=100):
         size_estimate=len(self._patches)*self.size[0]*self.size[1]*3
+        print(size_estimate/1e6)
         db_write=LMDBWrite(db_path,size_estimate,write_frequency)
         db_write.write(self)
             
