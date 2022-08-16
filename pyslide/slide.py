@@ -44,7 +44,7 @@ class Slide(OpenSlide):
     :param draw_border: boolean to generate border based on annotations
     :param _border: list of border coordinates [(x1,y1),(x2,y2)]
     """
-    MAG_fACTORS={0:1,1:2,2:4,3:8,4:16,5:32}
+    MAG_FACTORS={0:1,1:2,2:4,3:8,4:16,5:32}
     MASK_SIZE=(2000,2000)
 
     def __init__(self,
@@ -74,8 +74,9 @@ class Slide(OpenSlide):
 
     @property
     def slide_mask(self):
-       mask=self.generate_mask((MASK_SIZE))
+       mask=self.generate_mask((Slide.MASK_SIZE))
        mask=mask2rgb(mask)
+
        return mask
 
 
@@ -142,7 +143,7 @@ class Slide(OpenSlide):
             f=lambda x: (min(x)-space, max(x)+space)
             self._border=list(map(f, list(zip(*coordinates))))
 
-        mag_factor=Slide.MAG_fACTORS[self.mag]
+        mag_factor=Slide.MAG_FACTORS[self.mag]
         f=lambda x: (int(x[0]/mag_factor),int(x[1]/mag_factor))
         self._border=list(map(f,self._border))
 
