@@ -29,6 +29,7 @@ from pyslide.util.utilities import mask2rgb
 from pyslide.exceptions import StitchingMissingPatches
 from pyslide.analysis.filters import entropy
 from pyslide.io.lmdb_io import LMDBWrite
+from pyslide.io.tfrecords_io import TFRecordWrite
 
 __author__='Gregory Verghese'
 __email__='gregory.verghese@gmail.com'
@@ -403,8 +404,14 @@ class Patch():
         db_write.write(self)
             
 
-    def to_tfrecords(self, db_path):
-        pass
+    def to_tfrecords(self, 
+                     db_path,
+                     shard_size=0.01,
+                     unit=1e9
+                     ):
+        TFRecordWrite(db_path,self,shard_size,unit).convert()
+        
+        
 
 
 class Stitching():
