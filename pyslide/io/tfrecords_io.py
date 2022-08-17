@@ -10,67 +10,63 @@ import numpy as np
 import tensorflow as tf
 
 
-
-class TFRecordWrite(self):
+class TFRecordWrite():
     def __init__(self,
                  db_path,
-                 dims,
+                 patch,
                  shard_size=0.01,
                  unit=10**9):
 
         self.db_path=db_path
-        self.dims=dims
+        self.patch=patch
         self.shard_size=0.01 
         self.unit=10**9
 
     
-    @static_method
     def _print_progress(self,i):
-        complete = float(count)/total
-        print('\r- Progress: {0:.1%}'.format(complete), flush=True)
+        complete = float(i)/self.img_num_per_shard
+        print(f'\r- Progress: {complete:.1%}', end='\r')
 
     
-    @static_method
-    def _wrap_int64(self,value):
+    @staticmethod
+    def _wrap_int64(value):
         return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
 
-    @static_method
-    def _wrap_bytes(self,value):
+    @staticmethod
+    def _wrap_bytes(value):
         return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
     
     @property
     def mem_size(self):
-        return mem = sum(sys.getsizeof(i.tobytes()) 
-                        for i in self.patch.extract_patches())
+        mem = sum(sys.getsizeof(p.tobytes()) 
+                        for p,_ in self.patch.extract_patches())
+        return mem/self.unit
+
 
     @property
     def shard_number(self):
-        return int(np.ceil(mem/self.shard_size))
+        return int(np.ceil(self.mem_size/self.shard_size))
 
 
     @property
     def img_num_per_shard(self):
-        return int(np.floor(len(self.patches_patches)/self.shard_size))
+        return int(np.floor(len(self.patch._patches)/self.shard_number))
 
 
-    def convert(self, patch):
-
-        convert(shardImgs, shardMasks, os.path.join(outPath,outDir,str(i)+'.tfrecords'), dim=None
-      
-        writer=tf.io.TFRecordWriter(self.db_path)
-        for i, (p, image) in enumerate(self.patch.extract_patches()):
+    def convert(self): 
+        for i in range(self.shard_number):
+            path=os.path.join(self.db_path,str(i)+'.tfrecords')
+            writer=tf.io.TFRecordWriter(path)
+            for j in range(self.img_num_per_shard):
+                image, p = next(self.patch.extract_patches())
+                self._print_progress(j)
+                #image = tf.image.encode_png(image)
             
-        for i, (p, image) in enumerate(patch.extract_patches()):
-            self._print_progress(i)
-            image = tf.image.encode_png(image)
-            
-            data = {
-                'image': wrap_bytes(image),
-                'name': wrap_bytes(p['name']),
-                'dims': wrap_int64(dims[0]) 
-                }
+            data = {'image': self._wrap_bytes(image),
+                    'name': self._wrap_bytes(p['name']),
+                    'dims': self._wrap_int64(self.dims[0])}
                
             features = tf.train.Features(feature=data)
             example = tf.train.Example(features=features)
