@@ -47,7 +47,10 @@ class LMDBWrite():
 class LMDBRead():
     def __init__(self, db_path, image_size):
         self.db_path=db_path
-        self.env=lmdb.open(self.db_path,readonly=True)
+        self.env=lmdb.open(self.db_path,
+                           readonly=True,
+                           lock=False
+                           )
         self.image_size=image_size
 
 
@@ -70,12 +73,10 @@ class LMDBRead():
 
 
     def read_image(self,key):
-        #env=lmdb.open(self.db_path,readonly=True)
         txn = self.env.begin()
         data = txn.get(key)
         image = pickle.loads(data)
         image = np.frombuffer(image, dtype=np.uint8)
         image = image.reshape(self.image_size)
-        #self.env.close()
         return image
 
