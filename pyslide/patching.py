@@ -399,7 +399,6 @@ class Patch():
 
     def to_lmdb(self, db_path, write_frequency=100):
         size_estimate=len(self._patches)*self.size[0]*self.size[1]*3
-        print(size_estimate/1e6)
         db_write=LMDBWrite(db_path,size_estimate,write_frequency)
         db_write.write(self)
             
