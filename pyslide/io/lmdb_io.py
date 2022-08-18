@@ -26,14 +26,19 @@ class LMDBWrite():
         return image_bytes
 
 
+    def _print_progress(self,i,total):
+        complete = float(i)/total
+        print(f'\r- Progress: {complete:.1%}', end='\r')
+
+
     def write(self,patch): 
         txn=self.env.begin(write=True)
         for i, (image, p) in enumerate(patch.extract_patches()):
             value=self._serialize(image)
             key = f"{p['name']}"
             txn.put(key.encode("ascii"), pickle.dumps(value))
+            self._print_progress(i,len(patch._patches))
             if i % self.write_frequency == 0:
-                print("[%d/%d]" % (i, len(patch._patches)))
                 txn.commit()
                 txn = self.env.begin(write=True)
         txn.commit()
