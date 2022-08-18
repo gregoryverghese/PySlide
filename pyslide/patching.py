@@ -27,7 +27,7 @@ import operator as op
 
 from pyslide.util.utilities import mask2rgb
 from pyslide.exceptions import StitchingMissingPatches
-from pyslide.analysis.filters import entropy
+from pyslide.analysis.filters import image_entropy
 from pyslide.io.lmdb_io import LMDBWrite
 from pyslide.io.tfrecords_io import TFRecordWrite
 
@@ -230,13 +230,6 @@ class Patch():
 
 
 
-    def filter_labels(self):
-        for i,l in enumerate(self.labels):
-            self._patches.pop(i)
-            self._labels.pop(i)
-        return len(self._patches)
-
-    
     def plot_class_dist(self):
         """
         plot label distribution
@@ -259,14 +252,15 @@ class Patch():
         :param channel: channel index
         :return removed: number of removed
         """
-        num_b4=self._number
+        num_b4=self.number
         patches=self._patches.copy()
 
         if filter_type=='entropy':
-            for patch, p in self.extract_patches():
-                avg_entropy=entropy(patch)
-            if avg_entropy<threshold:
-                self._patches.remove(p)
+            for i, (patch, p) in enumerate(self.extract_patches()):
+                avg_entropy=image_entropy(patch)
+                if avg_entropy<threshold:
+                    print('greg')
+                    patches.remove(p)
 
         elif filter_type=='intensity':
             if channel is not None:
