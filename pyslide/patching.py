@@ -58,7 +58,7 @@ class Patch():
         self._labels=[]
         self._downsample=int(slide.level_downsamples[mag_level])
         num=self.generate_patches(self.step)
-        print('num patches: {}'.format(num))
+        print(f'num patches: {num}')
         
 
     @property
@@ -185,7 +185,9 @@ class Patch():
 
     #TODO: how to treat labels that don't pass
     #threshold test
-    def generate_labels(self,threshold=0.5):
+    def generate_labels(self,
+                        threshold=0.5,
+                        remove=True):
         """
         generate patch labels based on pixel-level annotations
         :param threshold: threshold proportion
@@ -199,8 +201,10 @@ class Patch():
         for i, (mask,_) in enumerate(self.extract_masks()):
             cls,cnts=np.unique(mask, return_counts=True)
             cls,cnts=(list(cls),list(cnts))
-            cnts.pop(cls.index(0))
-            cls.remove(0)
+            if cls!=[0]:
+                if 0 in cls:
+                    cnts.pop(cls.index(0))
+                    cls.remove(0)
             y=cls[cnts.index(max(cnts))]
             y_cnt=max(cnts)
 
@@ -210,8 +214,20 @@ class Patch():
             else:
                 self._patches[i]['label']=np.nan
                 self._labels.append(np.nan)
+        
+        if remove:
+            num=0
+            for i, p in enumerate(self._patches):
+                if p['label'] is np.nan:
+                   del self._patches[i]
+                   del self._labels[i]
+                   num+=1
+            print(f'removed: {num}')
 
-        return np.unique(np.array(self._labels),return_counts=True)
+        cls,cnts=np.unique(self._labels,return_counts=True)
+        print(pd.DataFrame({'classes':cls,'numbers':cnts}))
+        return pd.DataFrame({'classes':cls,'numbers':cnts})
+
 
 
     def filter_labels(self):
