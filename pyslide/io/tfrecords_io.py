@@ -35,6 +35,8 @@ class TFRecordWrite():
 
     @staticmethod
     def _wrap_bytes(value):
+        if isinstance(value, type(tf.constant(0))):
+            value = value.numpy()
         return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
     
@@ -62,14 +64,14 @@ class TFRecordWrite():
             for j in range(self.img_num_per_shard):
                 image, p = next(self.patch.extract_patches())
                 self._print_progress(j)
-                #image = tf.image.encode_png(image)
-            
-            data = {'image': self._wrap_bytes(image),
-                    'name': self._wrap_bytes(p['name']),
-                    'dims': self._wrap_int64(self.dims[0])}
+                image = tf.image.encode_png(image)
+                 
+                data = {'image': self._wrap_bytes(image),
+                         'name': self._wrap_bytes(p['name'].encode('utf8')),
+                         'dims': self._wrap_int64(self.patch.size[0])}
                
-            features = tf.train.Features(feature=data)
-            example = tf.train.Example(features=features)
-            serialized = example.SerializeToString()
-            writer.write(serialized)
+                features = tf.train.Features(feature=data)
+                example = tf.train.Example(features=features)
+                serialized = example.SerializeToString()
+                writer.write(serialized)
 
