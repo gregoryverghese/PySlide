@@ -45,18 +45,18 @@ class Patch():
                  step=None):
 
         super().__init__()
-        self.slide=slide
-        self.mag_level=mag_level
-        self.size=size
-        self.border=slide._border if border is None else border
+        self.slide = slide
+        self.mag_level = mag_level
+        self.size = size
+        self.border = slide._border if border is None else border
         self._x_min = int(self.border[0][0])
         self._x_max = int(self.border[0][1])
         self._y_min = int(self.border[1][0])
         self._y_max = int(self.border[1][1])
         self.step=size[0] if step is None else step
         #self.mode='sparse' if mode is None else mode
-        self._patches=[]
-        self._labels=[]
+        self._patches =[]
+        self._labels = []
         self._downsample=int(slide.level_downsamples[mag_level])
         #num=self.generate_patches(self.step)
         #print(f'num patches: {num}')
@@ -69,24 +69,20 @@ class Patch():
             overlap=(self.size[0]-self.step)/2.0
             #overlap=self.step/2.0
         
-        print('overlap',overlap)
         self.patch = DeepZoomGenerator(slide,
                               tile_size=tile_size,
                               overlap=overlap,
                               limit_bounds=False)
         
         n_level=self.patch.level_count-1
-        print(n_level)
-        tile_address_max=self.patch.level_tiles[n_level]
-        print(tile_address_max) 
+        tile_address_max=self.patch.level_tiles[n_level-self.mag_level]
         for i in range(tile_address_max[0]):
             for j in range(tile_address_max[1]):
                 tile_info=self.patch.get_tile_coordinates(n_level-self.mag_level,(i,j))
                 x,y=tile_info[0]
                 name=self.slide.name+'_'+str(x)+'_'+str(y)
-                #if edge_cases:
-                    #if self._remove_edge_case(x,y):
-                        #continue
+                if self._remove_edge_case(x,y):
+                        continue
                 self._patches.append({'name':name,'x':x,'y':y})
         self._number=len(self._patches)
 
@@ -424,7 +420,7 @@ class Patch():
         for patch,p in self.extract_patches():
             if label_dir:
                  patch_path=os.path.join(path_path,patch['labels'])
-            self.save_image(patch,patch_path,filename,p['x'],p['y'])
+            self._save_disk(patch,patch_path,filename,p['x'],p['y'])
         if mask_flag:
             mask_generator=self.extract_masks()
             mask_path=os.path.join(path,'masks')
@@ -432,7 +428,7 @@ class Patch():
             if label_dir:
                 patch_path=os.path.join(path_path,patch['labels'])
                 for mask,m in self.extract_masks():
-                    self.save_image(mask,mask_path,filename,m['x'],m['y'])
+                    self._save_disk(mask,mask_path,filename,m['x'],m['y'])
 
         if label_csv:
             df=pd.DataFrame(self._patches,columns=['names','x','y','labels'])
