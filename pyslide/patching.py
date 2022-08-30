@@ -20,6 +20,7 @@ import cv2
 import seaborn as sns
 from matplotlib.path import Path
 from openslide import OpenSlide
+from openslide.deepzoom import DeepZoomGenerator
 import pandas as pd
 import seaborn as sns
 from itertools import chain
@@ -57,9 +58,38 @@ class Patch():
         self._patches=[]
         self._labels=[]
         self._downsample=int(slide.level_downsamples[mag_level])
-        num=self.generate_patches(self.step)
-        print(f'num patches: {num}')
+        #num=self.generate_patches(self.step)
+        #print(f'num patches: {num}')
         
+        if self.size[0]==self.step:
+            tile_size=self.size[0]
+            overlap=0
+        else:
+            tile_size=self.size[0]-self.step
+            #overlap=(self.size[0]-self.step)/2.0
+            overlap=self.step/2.0
+        
+        print('overlap',overlap)
+        self.patch = DeepZoomGenerator(slide,
+                              tile_size=tile_size,
+                              overlap=overlap,
+                              limit_bounds=False)
+        
+        n_level=self.patch.level_count-1
+        print(n_level)
+        tile_address_max=self.patch.level_tiles[n_level]
+        print(tile_address_max) 
+        for i in range(tile_address_max[0]):
+            for j in range(tile_address_max[1]):
+                tile_info=self.patch.get_tile_coordinates(n_level-self.mag_level,(i,j))
+                x,y=tile_info[0]
+                name=self.slide.name+'_'+str(x)+'_'+str(y)
+                #if edge_cases:
+                    #if self._remove_edge_case(x,y):
+                        #continue
+                self._patches.append({'name':name,'x':x,'y':y})
+        self._number=len(self._patches)
+
 
     @property
     def number(self):
@@ -93,14 +123,15 @@ class Patch():
         return config
 
 
-    def __repr__(self):
+    #def __repr__(self):
         """
         object representation
         :return str(self.config)
         """
-        return str(self.config)
+        #pass
+        #return str(self.config)
 
-
+        
     def _patching(self,step):
         """
         step across coordinate range
