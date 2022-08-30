@@ -65,9 +65,9 @@ class Patch():
             tile_size=self.size[0]
             overlap=0
         else:
-            tile_size=self.size[0]-self.step
-            #overlap=(self.size[0]-self.step)/2.0
-            overlap=self.step/2.0
+            tile_size=self.step
+            overlap=(self.size[0]-self.step)/2.0
+            #overlap=self.step/2.0
         
         print('overlap',overlap)
         self.patch = DeepZoomGenerator(slide,
