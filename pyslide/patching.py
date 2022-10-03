@@ -81,8 +81,8 @@ class Patch():
                 tile_info=self.patch.get_tile_coordinates(n_level-self.mag_level,(i,j))
                 x,y=tile_info[0]
                 name=self.slide.name+'_'+str(x)+'_'+str(y)
-                if self._remove_edge_case(x,y):
-                        continue
+                #if self._remove_edge_case(x,y):
+                #       continue
                 self._patches.append({'name':name,'x':x,'y':y})
         self._number=len(self._patches)
 
