@@ -14,6 +14,7 @@ Annotation class: Parses annotation file output from:
 import os
 import glob
 import json
+import itertools
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -250,10 +251,11 @@ class Slide(OpenSlide):
         if (y_min+y_size)>self.dimensions[1]:
             y_size=self.dimensions[1]-y_min
 
-        x_size_adj=int(x_size/Slide.MAG_fACTORS[mag])
-        y_size_adj=int(y_size/Slide.MAG_fACTORS[mag])
+        x_size_adj=int(x_size/Slide.MAG_FACTORS[mag])
+        y_size_adj=int(y_size/Slide.MAG_FACTORS[mag])
         region=self.read_region((x_min,y_min),mag,(x_size_adj, y_size_adj))
-        mask=self.generate_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
+        #mask=self.generate_mask()[x_min:x_min+x_size,y_min:y_min+y_size]
+        mask=self.generate_mask()[y_min:y_min+y_size,x_min:x_min+x_size]
 
         return np.array(region.convert('RGB')), mask
 
@@ -298,6 +300,7 @@ class Annotations():
 
     def __repr__(self):
         numbers=[len(v) for k, v in self._annotations.items()]
+        print(numbers)
         df=pd.DataFrame({"classes":self.labels,"number":numbers})
         return str(df)
 
@@ -448,14 +451,16 @@ class Annotations():
                 annotations[c]=[]
             if geometry=="LineString":
                 points=[[int(i[0]),int(i[1])] for i in coordinates]
-            elif geometry=="Polygon":    
+                annotations[c].append(points)
+            elif geometry=="Polygon":  
                 for a2 in coordinates:
                     points=[[int(i[0]),int(i[1])] for i in a2]
+                    annotations[c].append(points)
             elif geometry=="MultiPolygon":
                 for a2 in coordinates:
                     for a3 in a2:
                         points=[[int(i[0]),int(i[1])] for i in a3]
-            annotations[c].append(points)
+                        annotations[c].append(points)
         return annotations
 
 
