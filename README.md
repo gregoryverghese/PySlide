@@ -8,24 +8,38 @@
 
   <h3 align="left">PySlide</h3>
  
-A library for preprocessing histology slides (WSIs) with a focus for downstream machine learning tasks. Wraps around OpenSlide (a C library that provides an easy way to interface with WSIs) and extends the functionality to work with annotation files overlaid on the slides. This is the beginnings of a comprehensive framework to process WSIs particularly with a focus on machine learning. Future versions will continue to build a useful tool for the digital pathology and medical AI community.
+PySlide is a comprehensive Python package for preprocessing pathology whole slide images (WSIs). Built as a wrapper around OpenSlide, it provides powerful, user-friendly functionality for working with high-resolution pathology images, making it ideal for researchers and data scientists in the medical imaging domain.
 
-* generate annotation masks
-* generate class labels
-* extract regions of slide
-* detect components on slide
-* generate patches with different size, mag-level, step-size
-* filter patches
-* generate class weights
-* stitch patches
+## Features
 
-### ToDo
+- **WSI Handling**: Supports large pathology slides and other WSI formats via OpenSlide.
+- **Efficient Preprocessing**: Streamline tasks like cropping, resizing, and filtering at high performance.
+- **Annotation Support**: Easily integrate and visualize annotations.
+- **Tiling and Patching**: Flexible tiling options for patch extraction, ideal for deep learning workflows.
+- **Image Metadata Extraction**: Retrieve and manage metadata from WSIs.
+  
+## Installation
 
-* sampling techniques
-* preprocessing functions
-* extend storage functionality (HDF5, LMDB, tfrecords)
-* public datasets - BACH or Cameylon
-* tests
+Install PySlide via PyPI:
+
+```bash
+pip install PySlide
+```
+
+## Quick Start
+
+```python
+from pyslide import SlideProcessor
+
+# Initialize the processor with your WSI file
+processor = SlideProcessor("path/to/your/slide.svs")
+
+# Example: Extract a tile
+tile = processor.get_tile(x=1000, y=2000, width=256, height=256)
+
+# Example: Preprocess a slide
+processed_slide = processor.preprocess_slide(parameters)
+```
 
 <!-- LICENSE -->
 ### License
