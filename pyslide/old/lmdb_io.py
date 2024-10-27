@@ -8,60 +8,41 @@ import numpy as np
 from torch.utils.data import DataLoader, Dataset
 
 
-class NpyObject():
-    def __init__(self, ndarray):
-        self.ndarray = ndarray.tobytes()
-        #self.label = label
-        self.size = ndarray.shape
-        self.dtype = ndarray.dtype
-
-    def get_ndarray(self):
-        ndarray = np.frombuffer(self.ndarray, dtype=self.dtype)
-        return ndarray.reshape(self.size)
-
-
 class LMDBWrite():
     def __init__(self,db_path,map_size,write_frequency=10):
-        self.db_path = db_path
-        self.map_size = map_size
-        print(f"db path and map_size: {self.db_path} {self.map_size}")
-        self.env = lmdb.open(path=self.db_path,map_size=self.map_size,writemap=True)
-        self.write_frequency = write_frequency
-
+        self.db_path=db_path
+        self.map_size=map_size
+        self.env=lmdb.open(self.db_path, 
+                           map_size=5e9,
+                           writemap=True)
+        self.write_frequency=write_frequency
 
     def __repr__(self):
         return f'LMBDWrite(size: {self.map_size}, path: {self.db_path})'
     
+
+    def _serialize(self,image):
+        image_bytes = image.tobytes()
+        return image_bytes
+
 
     def _print_progress(self,i,total):
         complete = float(i)/total
         print(f'\r- Progress: {complete:.1%}', end='\r')
 
 
-    def write(self,parser):
-        print("Beginning writing to db ...")
+    def write(self,patch): 
         txn=self.env.begin(write=True)
-        for i, (p, tile) in enumerate(parser):
-            name = str(p[1])+'_'+str(p[0])
-            key = f"{name}"
-            value=NpyObject(tile)
+        for i, (image, p) in enumerate(patch.extract_patches()):
+            value=self._serialize(image)
+            key = f"{p['name']}"
             txn.put(key.encode("ascii"), pickle.dumps(value))
-            #self._print_progress(i,len(patch._patches))
+            self._print_progress(i,len(patch._patches))
             if i % self.write_frequency == 0:
                 txn.commit()
                 txn = self.env.begin(write=True)
         txn.commit()
         self.env.close()
-        print("Writing to db done")
-
-
-    def write_image(self,image,name): 
-        txn=self.env.begin(write=True)
-        value=NpyObject(image)
-        b=pickle.dumps(value)
-        key = f"{name}"
-        txn.put(key.encode('ascii'), b)
-        txn.commit()
 
 
     def close(self):
@@ -69,13 +50,13 @@ class LMDBWrite():
 
 
 class LMDBRead():
-    def __init__(self, db_path, image_size=None):
+    def __init__(self, db_path, image_size):
         self.db_path=db_path
         self.env=lmdb.open(self.db_path,
                            readonly=True,
                            lock=False
                            )
-        #self.image_size=image_size
+        self.image_size=image_size
 
 
     @property
@@ -100,8 +81,7 @@ class LMDBRead():
         txn = self.env.begin()
         data = txn.get(key)
         image = pickle.loads(data)
-        image=image.get_ndarray()
-        #image = np.frombuffer(image, dtype=np.uint8)
-        #image = image.reshape(self.image_size)
+        image = np.frombuffer(image, dtype=np.uint8)
+        image = image.reshape(self.image_size)
         return image
 

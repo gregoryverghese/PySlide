@@ -17,6 +17,7 @@
 *xml
 *json
 *old/*
+*tiler/*
 
 #scripts
 scrapbook.py
