@@ -1,4 +1,6 @@
 
+
+
 #files
 *.ndpi
 *.png
@@ -14,6 +16,7 @@
 *csv
 *xml
 *json
+*old/*
 
 #scripts
 scrapbook.py
