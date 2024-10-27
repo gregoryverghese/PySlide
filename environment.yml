@@ -1,0 +1,22 @@
+name: base
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - conda
+  - mamba[version='>=1.5.9']
+  - einops
+  - h5py
+  - huggingface_hub
+  - lmdb
+  - matplotlib
+  - pandas
+  - rocksdb
+  - scipy
+  - seaborn
+  - scikit-image
+  - tensorflow
+  - timm
+  - webdataset
+prefix: /Users/k2030634/miniforge3

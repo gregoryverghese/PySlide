@@ -107,7 +107,7 @@ def convert(imageFiles, maskFiles, tfRecordPath, dim=None):
 
             image = tf.keras.preprocessing.image.load_img(img)
             image = tf.keras.preprocessing.image.img_to_array(image,dtype=np.uint8)
-            if stainNormalize=
+            #if stainNormalize=
             dims = image.shape
             image = tf.image.encode_png(image)
             
