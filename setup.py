@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="PyWSI",
+    name="PySlyde",
     version="0.1.0",
     author="Gregory Verghese",
     author_email="gregory.verghese@gmail.com",
