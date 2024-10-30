@@ -16,9 +16,9 @@ import operator as op
 
 #from tiler.utilities import mask2rgb, reinhard
 #from exceptions import StitchingMissingPatches
-from tiler.lmdb_io import LMDBWrite
-from tiler.disk_io import DiskWrite
-from tiler.feature_extractor import FeatureGenerator
+from pyslyde.io.lmdb_io import LMDBWrite
+from pyslyde.io.disk_io import DiskWrite
+from pyslyde.encoders.feature_extractor import FeatureGenerator
 #from pyslide.io.tfrecords_io import TFRecordWrite
 
 
@@ -389,5 +389,174 @@ class WSIParser:
         os.makedirs(path, exist_ok=True)
         writer = DiskWrite(path, write_frequency)
         writer.write(func)  
+
+
+class Stitching():
+
+    MAG_FACTORS={0:1,1:2,2:4,3:8,4:16,5:32,5:64}
+
+    def __init__(self,patch_path,
+                 slide=None,
+                 patching=None,
+                 name=None,
+                 step=None,
+                 border=None,
+                 mag_level=0):
+
+        self.patch_path=patch_path
+        patch_files=glob.glob(os.path.join(self.patch_path,'*'))
+        self.patch_files=[os.path.basename(p) for p in patch_files]
+        print(patch_files[0])
+        self.fext=self.patch_files[0].split('.')[-1]
+        self.slide=slide
+        self.coords=self._get_coords()
+        self.mag_level=mag_level
+        print(self.patch_files)
+
+        if name is not None:
+            self.name=name
+        elif patching is not None:
+            self.name=self.patching.slide.name
+        else:
+            raise TypeError("missing name")
+
+        if patching is not None:
+            self.border=patching.slide.border
+        else:
+            self.border=self._get_border()
+ 
+        if patching is not None:
+            self.mag_level=patching.mag_level
+        elif mag_level is not None:
+            self.mag_level=mag_level
+
+        self._completeness()
+        print(self.config)
+        
+
+    @property
+    def config(self):
+        config={'name':self.name,
+                'mag':self.mag_level,
+                'step':self.step,
+                'border':self.border,
+                'patches':len(self.patch_files)}
+        return config
+
+
+    def __repr__(self):
+        return str(self.config)
+
+
+    @property
+    def step(self):
+        self._step=self._get_step()
+        return self._step
+
+
+    @property
+    def mag_factor(self):
+         return Stitching.MAG_FACTORS[self.mag_level]
+    
+    #TODO: check required coordinates according to parameters
+    def _get_coords(self):
+        """
+        return coordinates of patches based on patch filesnames
+        :return self._coords: list [(x1,y1),(x2,y2), ..., (xn,yn)]
+        """
+        patch_files=glob.glob(os.path.join(self.patch_path,'*'))
+        coords=[(int(f.split('_')[-2:][0]),int(f.split('_')[-2:][1][:-4]))
+                for f in patch_files]
+
+        self._coords=coords
+        return self._coords
+
+
+    def _get_border(self):
+        """
+        calculate border based on coordinate maxima and minima
+        :return [[xmin,xmax],[ymin,ymax]]
+        """
+        coords=self._get_coords()
+        xmax=max([c[0] for c in coords])
+        xmin=min([c[0] for c in coords])
+        ymax=max([c[1] for c in coords])
+        ymin=min([c[1] for c in coords])
+
+        return [[xmin,xmax],[ymin,ymax]]
+
+
+    def _get_step(self):
+        """
+        calculate step based on patch filenames
+        :return int(step/self.mag_factor)
+        """
+        coords=self._get_coords()
+        xs=[c[0] for c in coords]
+        step=min([abs(x1-x2) for x1, x2 in zip(xs, xs[1:]) if abs(x1-x2)!=0])
+        return int(step/self.mag_factor)
+
+
+    def _completeness(self):
+        """
+        check patch set is complete to stitch entire image
+        based on the coordinates. Raises MissingPatches error
+        if missing
+        """
+        missing_patches=[]
+        for (p_name,_,_) in self._patches():
+            print(p_name)
+            if p_name not in self.patch_files:
+                missing_patches.append(p_name)
+        if len(missing_patches)>0:        
+            raise StitchingMissingPatches(missing_patches)
+
+
+    def _patches(self):
+        """
+        return patches metadata (name,(x,y))
+        """
+        step=self.step*self.mag_factor
+        xmin,xmax=self.border[0][0],self.border[0][1]
+        ymin,ymax=self.border[1][0],self.border[1][1]
+        for i,x in enumerate(range(xmin,xmax+step,step)):
+            for j,y in enumerate(range(ymin,ymax+step,step)):
+                filename=self.name+'_'+str(x)+'_'+str(y)+'.'+self.fext
+                yield filename,x,y
+
+
+
+    def stitch(self,size=None):
+        """
+        stitches patches together to create entire
+        slide representation. Size argument 
+        determnines image size
+        :param size: (x_size,y_size)
+        """
+        xmin,xmax=self.border[0][0],self.border[0][1]
+        ymin,ymax=self.border[1][0],self.border[1][1]
+        z=self.step*self.mag_factor
+        xnew=(xmax+z-xmin)/self.mag_factor
+        ynew=(ymax+z-ymin)/self.mag_factor
+        canvas=np.zeros((int(ynew),int(xnew),3))
+        
+        #what do we do if it is none
+        if size is not None:
+            x_num=(xmax-xmin)/(self.step*self.mag_factor)+1
+            y_num=(ymax-ymin)/(self.step*self.mag_factor)+1
+            xdim_new=(int((size[0]/x_num))+1)*x_num
+            ydim_new=(int((size[1]/y_num))+1)*y_num
+            p_xsize=int(xdim_new/x_num)
+            p_ysize=int(ydim_new/y_num)
+            
+        canvas=np.zeros((int(ydim_new),int(xdim_new),3))
+        for filename,x,y in self._patches():
+            p=cv2.imread(os.path.join(self.patch_path,filename))
+            if size is not None:
+                p=cv2.resize(p,(p_xsize,p_ysize))
+                x=int(((x-xmin)/(self.step*self.mag_factor))*p_xsize)
+                y=int(((y-ymin)/(self.step*self.mag_factor))*p_ysize)
+            canvas[y:y+p_ysize,x:x+p_xsize,:]=p
+        return canvas.astype(np.uint8)
 
 

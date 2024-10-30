@@ -22,12 +22,12 @@ import numpy as np
 import torchvision.models as models
 from torchvision import transforms as T
 
-from tiler.ctran import ctranspath
-from tiler.HistoSSLscaling.rl_benchmarks.models import iBOTViT 
+from pyslyde.encoders.ctran import ctranspath
+#from pyslyde.encoders.HistoSSLscaling.rl_benchmarks.models import iBOTViT 
 #from HIPT_4K.hipt_model_utils import get_vit256, get_vit4k
-from tiler.HIPT.HIPT_4K.hipt_model_utils import eval_transforms
-from tiler.HIPT.HIPT_4K import vision_transformer as vits
-from tiler.HIPT.HIPT_4K.hipt_4k import HIPT_4K
+from pyslyde.encoders.HIPT.HIPT_4K.hipt_model_utils import eval_transforms
+from pyslyde.encoders.HIPT.HIPT_4K import vision_transformer as vits
+from pyslyde.encoders.HIPT.HIPT_4K.hipt_4k import HIPT_4K
 #from lmdb_data import LMDBRead, LMDBWrite
 
 from timm.data import resolve_data_config
@@ -168,18 +168,18 @@ class FeatureGenerator():
         return model.to(self.device)
 
 
-    def _phikon(self):
+    #def _phikon(self):
         """
         See https://github.com/owkin/HistoSSLscaling/tree/main?tab=readme-ov-file#download
         """
-        model = iBOTViT(
-            architecture="vit_base_pancan", 
-            encoder="teacher",
-            weights_path=self.model_path  
-        )
-        self.transforms = model.transform
-        print(self.transforms)
-        return model.to(self.device)
+        #model = iBOTViT(
+            #architecture="vit_base_pancan", 
+            #encoder="teacher",
+            #weights_path=self.model_path  
+        #)
+        #self.transforms = model.transform
+        #print(self.transforms)
+        #return model.to(self.device)
 
 
     def _transpath(self):

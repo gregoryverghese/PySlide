@@ -5,11 +5,11 @@ PySlyde.egg-info/SOURCES.txt
 PySlyde.egg-info/dependency_links.txt
 PySlyde.egg-info/requires.txt
 PySlyde.egg-info/top_level.txt
-pywsi/__init__.py
-pywsi/exceptions.py
-pywsi/filters.py
-pywsi/slide.py
-pywsi/slide_parser.py
+pyslyde/__init__.py
+pyslyde/exceptions.py
+pyslyde/filters.py
+pyslyde/slide.py
+pyslyde/slide_parser.py
 test/test_patching.py
 test/test_pyslide.py
 tiler/__init__.py

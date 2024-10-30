@@ -26,7 +26,7 @@ import matplotlib.patches as patches
 from skimage.color import rgb2gray
 from skimage.filters import threshold_otsu
 from skimage.morphology import square, closing, opening
-import staintools
+#import staintools
 
 def mask2rgb(mask):
     n_classes=len(np.unique(mask))
@@ -396,16 +396,16 @@ def calculate_weights(mask_path,num_cls):
     return weights
     
 
-
+"""
 class StainNormalizer:
     def __init__(self, target_img_path: str, method: str):
-        """
-        Initializes the stain normalizer with a target image and method.
+        
+        #Initializes the stain normalizer with a target image and method.
 
-        Parameters:
-        - target_img_path: Path to the target image for normalization.
-        - method: The stain normalization method to use ('reinhard', 'macenko', 'vahadane').
-        """
+        #Parameters:
+        #- target_img_path: Path to the target image for normalization.
+        #- method: The stain normalization method to use ('reinhard', 'macenko', 'vahadane').
+        
         self.target = self.initialize_target(target_img_path)
         self.method = method.lower()
         
@@ -427,15 +427,15 @@ class StainNormalizer:
         return staintools.LuminosityStandardizer.standardize(target)
 
     def normalize(self, img_arr: np.ndarray) -> np.ndarray:
-        """
-        Normalizes the stain of an image array to match the initialized target image.
+        
+       # Normalizes the stain of an image array to match the initialized target image.
 
-        Parameters:
-        - img_arr: A numpy array representing the image to be normalized.
+        #Parameters:
+        #- img_arr: A numpy array representing the image to be normalized.
 
-        Returns:
-        - A numpy array of the transformed image.
-        """
+       #Returns:
+        #- A numpy array of the transformed image.
+        
         if not isinstance(img_arr, np.ndarray):
             raise ValueError("Input image must be a numpy array.")
         
@@ -446,7 +446,7 @@ class StainNormalizer:
         img_transformed = self.normalizer.transform(img_to_transform)
 
         return img_transformed
-
+"""
 
 
 

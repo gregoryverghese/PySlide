@@ -1,2 +1,2 @@
-pywsi
+pyslyde
 tiler
