@@ -18,11 +18,12 @@ def entropy(tile, threshold):
     
 
 def tile_intensity(tile, threshold, channel=None):
-        
+    print(tile)
+    print('grr',np.mean(tile))
     if channel is not None:
         if np.mean(tile[:,:,channel]) > threshold:
             return True
-
+     
     elif channel is None:
         if np.mean(tile)>threshold:
             return True
