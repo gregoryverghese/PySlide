@@ -82,7 +82,7 @@ class Slide(OpenSlide):
        return mask
 
 
-    def generate_mask(self, size=None):
+    def generate_mask(self, size=None, labels=[]):
         """
         Generates mask representation of annotations.
 
@@ -90,8 +90,10 @@ class Slide(OpenSlide):
         :return: self._slide_mask ndarray. single channel
             mask with integer for each class
         """
-        x, y = self.dims[0], self.dims[1]
+         x, y = self.dims[0], self.dims[1]
         slide_mask=np.zeros((y, x), dtype=np.uint8)
+        if self.annotations is None:
+            return slide_mask
         self.annotations.encode=True
         coordinates=self.annotations.annotations
         keys=sorted(list(coordinates.keys()))
@@ -99,7 +101,7 @@ class Slide(OpenSlide):
             v = coordinates[k]
             v = [np.array(a) for a in v]
             cv2.fillPoly(slide_mask, v, color=k)
-        if size is not None:
+        if size is not None: 
             slide_mask=cv2.resize(slide_mask, size)
         return slide_mask
 
