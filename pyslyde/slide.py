@@ -102,7 +102,6 @@ class Slide(OpenSlide):
             self.annotations.class_key[l] for l in labels
             ] if labels else keys
         for k in keys:
-            print(k)
             if k in labels:
                 v=coordinates[k]
                 v=[np.array(a) for a in v]
