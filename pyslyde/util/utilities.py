@@ -153,13 +153,18 @@ class TissueDetect():
         thumb[:,:,1][self.contour_mask==0]=255
         thumb[:,:,2][self.contour_mask==0]=255
         return thumb
+    
+    
+    def border(self, mask=None):
         
-
-    def border(self):
-
-        test=cv2.resize(self.contour_mask,self.slide.dimensions)
-        print('resize test',test.shape)
-        contours,_=cv2.findContours(test,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+        if (mask is None) and (self.contour_mask is None):
+            #return dimensions of slide.
+            return None
+        
+        mask=self.contour_mask if mask is None else mask
+        mask =cv2.resize(mask,self.slide.dimensions)
+       
+        contours,_=cv2.findContours(mask,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
 
         #test=cv2.resize(self.contour_mask,self.slide.dimensions)
         #image=self.slide.get_thumbnail(self.slide.level_dimensions[3])
@@ -313,6 +318,7 @@ def visualise_wsi_tiling(
         ax.add_patch(patch)
 
     #ax.set_title(plot_args['title'], size=20)
+    print('saving where', save_path)
     plt.axis('off')
     plt.savefig(save_path)
     plt.close()
