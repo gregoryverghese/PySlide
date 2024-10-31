@@ -132,7 +132,7 @@ class WSIParser:
         """
         stride = self.tile_dims[0] if stride is None else stride
         stride = stride * self._downsample
-        print('stride', stride)
+        
         self._tiles = []
         for x in range(self._x_min, self._x_max, stride):
             for y in range(self._y_min, self._y_max, stride):
@@ -200,7 +200,7 @@ class WSIParser:
         self._tiles = tiles
         return len(self._tiles)
 
-    def filter_tiles(self, filter_func: Callable[[np.ndarray], bool]) -> None:
+    def filter_tiles(self, filter_func: Callable[[np.ndarray], bool], *args, **kwargs) -> None:
         """
         Filter tiles using filtering function
 
@@ -208,9 +208,9 @@ class WSIParser:
         """
         tiles = self._tiles.copy()
 
-        for i, tile in enumerate(self.extract_tiles()):
-            if filter_func(tile):
-                tiles.remove(tile)
+        for i, (t, tile) in enumerate(self.extract_tiles()):
+            if filter_func(tile, *args, **kwargs):
+                tiles.remove(t)
 
         print(f'Removed {self.number - len(tiles)} tiles')
         self._tiles = tiles.copy()
