@@ -90,14 +90,14 @@ class Slide(OpenSlide):
         :return: self._slide_mask ndarray. single channel
             mask with integer for each class
         """
-         x, y = self.dims[0], self.dims[1]
+        x, y = self.dims[0], self.dims[1]
         slide_mask=np.zeros((y, x), dtype=np.uint8)
         if self.annotations is None:
             return slide_mask
         self.annotations.encode=True
         coordinates=self.annotations.annotations
         keys=sorted(list(coordinates.keys()))
-        labels = keys if labels = [] else labels
+        labels = keys if labels == [] else labels
         for k in keys:
             if k in labels:
                 v=coordinates[k]
