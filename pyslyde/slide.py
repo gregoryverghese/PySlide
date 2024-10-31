@@ -94,11 +94,15 @@ class Slide(OpenSlide):
         slide_mask=np.zeros((y, x), dtype=np.uint8)
         if self.annotations is None:
             return slide_mask
+        
         self.annotations.encode=True
         coordinates=self.annotations.annotations
         keys=sorted(list(coordinates.keys()))
-        labels = keys if labels == [] else labels
+        labels = [
+            self.annotations.class_key[l] for l in labels
+            ] if labels else keys
         for k in keys:
+            print(k)
             if k in labels:
                 v=coordinates[k]
                 v=[np.array(a) for a in v]
