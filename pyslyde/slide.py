@@ -97,10 +97,12 @@ class Slide(OpenSlide):
         self.annotations.encode=True
         coordinates=self.annotations.annotations
         keys=sorted(list(coordinates.keys()))
+        labels = keys if labels = [] else labels
         for k in keys:
-            v = coordinates[k]
-            v = [np.array(a) for a in v]
-            cv2.fillPoly(slide_mask, v, color=k)
+            if k in labels:
+                v=coordinates[k]
+                v=[np.array(a) for a in v]
+                cv2.fillPoly(slide_mask, v, color=k)
         if size is not None: 
             slide_mask=cv2.resize(slide_mask, size)
         return slide_mask
